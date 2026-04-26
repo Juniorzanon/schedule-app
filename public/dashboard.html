@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Online Schedule</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    .hero {
+      text-align: center;
+      padding: 120px 20px;
+    }
+
+    .hero h1 {
+      font-size: 60px;
+      font-weight: 700;
+      color: #111;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: #666;
+      margin-top: 15px;
+      max-width: 650px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.5;
+    }
+
+    .buttons {
+      margin-top: 40px;
+    }
+
+    .primary {
+      background: #2f80ed;
+      color: white;
+    }
+
+    .secondary {
+      background: #f1f1f1;
+      color: #333;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+      font-size: 14px;
+      margin-top: 60px;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+  <h3>Online Schedule</h3>
+  <button class="primary" onclick="goDashboard()">Dashboard</button>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+
+  <h1>Shift Schedules</h1>
+
+  <p>
+    A modern and efficient way to manage employee schedules.
+    Upload your PDF, generate structured shifts instantly, and export or print with precision.
+    Built for speed, clarity, and real-world operations.
+  </p>
+
+  <div class="buttons">
+    <button class="primary" onclick="goDashboard()">Upload Schedule</button>
+    <button class="secondary" onclick="goDashboard()">View Dashboard</button>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  Created by Junior Zanon
+</div>
+
+<script>
+function goDashboard() {
+  window.location.href = "dashboard.html";
+}
+</script>
+
+</body>
+</html>
