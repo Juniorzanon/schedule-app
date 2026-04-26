@@ -1,10 +1,15 @@
 const express = require("express");
 const multer = require("multer");
+const fs = require("fs"); // 🔥 TEM QUE VIR ANTES
 const ExcelJS = require("exceljs");
-const fs = require("fs");
 const { execFile } = require("child_process");
 
-const app = express(); // 🔥 ESSENCIAL
+// cria pasta uploads se não existir
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
+
+const app = express();
 const upload = multer({ dest: "uploads/" });
 
 let extractedData = [];
