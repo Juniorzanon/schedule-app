@@ -1,38 +1,42 @@
 const express = require("express");
 const multer = require("multer");
-const fs = require("fs"); // 🔥 TEM QUE VIR ANTES
+const fs = require("fs");
 const ExcelJS = require("exceljs");
 const { execFile } = require("child_process");
 
-// cria pasta uploads se não existir
+const upload = multer({ dest: "uploads/" });
+
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
 
 const app = express();
-const upload = multer({ dest: "uploads/" });
-
-let extractedData = [];
 
 app.use(express.static("public"));
 app.use(express.json());
 
-// UPLOAD + PYTHON PARSER
-app.post("/upload", upload.single("file"), async (req, res) => {
+let extractedData = [];
+
+// =====================
+// UPLOAD
+// =====================
+app.post("/upload", upload.single("file"), (req, res) => {
   execFile("python", ["parser.py", req.file.path], (error, stdout) => {
     if (error) {
       console.error(error);
-      return res.status(500).send("Erro no parser");
+      return res.status(500).send("Parser error");
     }
 
-    extractedData = JSON.parse(stdout);
+    const parsed = JSON.parse(stdout);
+    extractedData = parsed.data || parsed;
 
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    res.json({ days });
+    res.json({ success: true });
   });
 });
 
-// GERAR ESCALA
+// =====================
+// GENERATE
+// =====================
 app.post("/generate", (req, res) => {
   const { day } = req.body;
 
@@ -43,7 +47,9 @@ app.post("/generate", (req, res) => {
   res.json(filtered);
 });
 
-// EXPORTAR EXCEL
+// =====================
+// EXPORT
+// =====================
 app.post("/export", async (req, res) => {
   const { data } = req.body;
 
@@ -51,12 +57,22 @@ app.post("/export", async (req, res) => {
   const sheet = workbook.addWorksheet("Schedule");
 
   sheet.columns = [
-    { header: "Name", key: "name" },
-    { header: "Start", key: "start" },
-    { header: "End", key: "end" }
+    { header: "Name", key: "name", width: 30 },
+    { header: "Start", key: "start", width: 15 },
+    { header: "End", key: "end", width: 15 },
+    { header: "Break 30", key: "break30", width: 15 },
+    { header: "Break 15", key: "break15", width: 15 }
   ];
 
-  data.forEach(row => sheet.addRow(row));
+  data.forEach(row => {
+    sheet.addRow({
+      name: row.name,
+      start: row.start,
+      end: row.end,
+      break30: "",
+      break15: ""
+    });
+  });
 
   const filePath = "schedule.xlsx";
   await workbook.xlsx.writeFile(filePath);
@@ -64,9 +80,9 @@ app.post("/export", async (req, res) => {
   res.download(filePath);
 });
 
-// START
+// =====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log("Server running on port " + PORT);
 });

@@ -1,92 +1,273 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Online Schedule</title>
+<meta charset="UTF-8">
+<title>Shift</title>
 
-  <link rel="stylesheet" href="style.css">
+<style>
+body {
+  margin:0;
+  font-family:'Segoe UI';
+  background:#f4f6fb;
+}
 
-  <style>
-    .hero {
-      text-align: center;
-      padding: 120px 20px;
-    }
+/* DARK MODE */
+.dark {
+  background:#0f172a;
+  color:#e5e7eb;
+}
 
-    .hero h1 {
-      font-size: 60px;
-      font-weight: 700;
-      color: #111;
-    }
+.header {
+  display:flex;
+  justify-content:space-between;
+  padding:15px 30px;
+  background:white;
+}
 
-    .hero p {
-      font-size: 18px;
-      color: #666;
-      margin-top: 15px;
-      max-width: 650px;
-      margin-left: auto;
-      margin-right: auto;
-      line-height: 1.5;
-    }
+.dark .header {
+  background:#1e293b;
+}
 
-    .buttons {
-      margin-top: 40px;
-    }
+.container {
+  max-width:1100px;
+  margin:auto;
+  padding:20px;
+}
 
-    .primary {
-      background: #2f80ed;
-      color: white;
-    }
+.card {
+  background:white;
+  padding:20px;
+  margin-bottom:20px;
+  border-radius:10px;
+}
 
-    .secondary {
-      background: #f1f1f1;
-      color: #333;
-    }
+.dark .card {
+  background:#1e293b;
+}
 
-    .footer {
-      text-align: center;
-      padding: 40px;
-      color: #888;
-      font-size: 14px;
-      margin-top: 60px;
-    }
-  </style>
+.controls {
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+
+button {
+  padding:10px;
+  background:#3b6edc;
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.clear {
+  background:#555;
+}
+
+.dark .clear {
+  background:#475569;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+}
+
+th {
+  background:#3b6edc;
+  color:white;
+  padding:10px;
+}
+
+td {
+  border:1px solid #eee;
+  padding:8px;
+}
+
+.dark td {
+  border-color:#334155;
+}
+
+td[contenteditable] {
+  background:#eef3ff;
+}
+
+.dark td[contenteditable] {
+  background:#1e293b;
+}
+</style>
 </head>
 
 <body>
 
-<!-- NAVBAR -->
-<div class="navbar">
-  <h3>Online Schedule</h3>
-  <button class="primary" onclick="goDashboard()">Dashboard</button>
-</div>
+<div class="header">
+  <b>Online Schedule</b>
 
-<!-- HERO -->
-<div class="hero">
-
-  <h1>Shift Schedules</h1>
-
-  <p>
-    A modern and efficient way to manage employee schedules.
-    Upload your PDF, generate structured shifts instantly, and export or print with precision.
-    Built for speed, clarity, and real-world operations.
-  </p>
-
-  <div class="buttons">
-    <button class="primary" onclick="goDashboard()">Upload Schedule</button>
-    <button class="secondary" onclick="goDashboard()">View Dashboard</button>
+  <div>
+    <button onclick="toggleDark()">🌙</button>
+    <button onclick="goHome()">Home</button>
   </div>
-
 </div>
 
-<!-- FOOTER -->
-<div class="footer">
-  Created by Junior Zanon
+<div class="container">
+
+<h2 style="text-align:center;">Shift</h2>
+
+<div class="card">
+  <div class="controls">
+    <input type="file" id="fileInput">
+    <button onclick="uploadFile()">Upload</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="controls">
+    <select id="daySelect">
+      <option>Mon</option><option>Tue</option><option>Wed</option>
+      <option>Thu</option><option>Fri</option><option>Sat</option>
+      <option>Sun</option>
+    </select>
+
+    <button onclick="generateSchedule()">Generate</button>
+    <button onclick="clearTable()" class="clear">Clear</button>
+    <button onclick="exportExcel()">Export</button>
+    <button onclick="printPage()">Print</button>
+  </div>
+</div>
+
+<div class="card">
+  <table id="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Break 30</th>
+        <th>Break 15</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
 </div>
 
 <script>
-function goDashboard() {
-  window.location.href = "dashboard.html";
+
+let currentData = [];
+
+// =======================
+// UPLOAD
+// =======================
+async function uploadFile() {
+  const file = document.getElementById("fileInput").files[0];
+
+  if (!file) return alert("Select a file");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  await fetch("/upload", {
+    method: "POST",
+    body: formData
+  });
+
+  alert("Upload done!");
 }
+
+// =======================
+// GENERATE
+// =======================
+async function generateSchedule() {
+  const day = document.getElementById("daySelect").value;
+
+  const res = await fetch("/generate", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ day })
+  });
+
+  const data = await res.json();
+  currentData = data;
+
+  renderTable(data);
+}
+
+// =======================
+function renderTable(data) {
+  const tbody = document.querySelector("#table tbody");
+  tbody.innerHTML = "";
+
+  data.forEach(row => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${row.name}</td>
+      <td contenteditable>${row.start}</td>
+      <td contenteditable>${row.end}</td>
+      <td><input type="checkbox"></td>
+      <td><input type="checkbox"></td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+// =======================
+// CLEAR
+// =======================
+function clearTable() {
+  document.querySelector("#table tbody").innerHTML = "";
+  currentData = [];
+}
+
+// =======================
+// EXPORT
+// =======================
+async function exportExcel() {
+  const res = await fetch("/export", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ data: currentData })
+  });
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "schedule.xlsx";
+  a.click();
+}
+
+// =======================
+function printPage() {
+  window.print();
+}
+
+// =======================
+// DARK MODE
+// =======================
+function toggleDark() {
+  document.body.classList.toggle("dark");
+
+  const isDark = document.body.classList.contains("dark");
+  localStorage.setItem("darkMode", isDark);
+}
+
+(function () {
+  const saved = localStorage.getItem("darkMode");
+  if (saved === "true") {
+    document.body.classList.add("dark");
+  }
+})();
+
+// =======================
+function goHome() {
+  window.location.href = "/";
+}
+
 </script>
 
 </body>

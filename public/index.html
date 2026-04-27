@@ -1,125 +1,155 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
   <title>Online Schedule</title>
 
-  <link rel="stylesheet" href="style.css">
-
   <style>
-    /* Pequenos ajustes só da home */
-    .hero {
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial;
+      background: #f4f6fb;
+      color: #333;
       text-align: center;
-      padding: 100px 20px;
     }
 
-    .hero h1 {
-      font-size: 56px;
-      font-weight: 700;
-      color: #222;
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      padding: 15px 30px;
+      background: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
 
-    .hero span {
-      color: #e0e0e0;
-    }
-
-    .hero p {
+    .logo {
+      font-weight: bold;
       font-size: 18px;
-      color: #666;
-      margin-top: 15px;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
     }
 
-    .buttons {
-      margin-top: 30px;
+    .btn {
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
     }
 
-    .primary {
-      background: #2f80ed;
+    .btn-primary {
+      background: #3b6edc;
       color: white;
     }
 
-    .secondary {
-      background: #f1f1f1;
-      color: #333;
+    .btn-secondary {
+      background: white;
+      border: 1px solid #ccc;
+    }
+
+    .hero {
+      margin-top: 100px;
+    }
+
+    .title {
+      font-size: 42px;
+      font-weight: bold;
+    }
+
+    .title span {
+      display: block;
+      font-size: 20px;
+      color: #999;
+      margin-top: 10px;
+    }
+
+    .subtitle {
+      margin-top: 20px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .buttons {
+      margin-top: 25px;
     }
 
     .features {
-      padding: 60px 20px;
-      text-align: center;
-    }
-
-    .cards {
+      margin-top: 100px;
       display: flex;
-      gap: 20px;
       justify-content: center;
-      margin-top: 30px;
+      gap: 25px;
       flex-wrap: wrap;
     }
 
     .card {
       background: white;
-      padding: 20px;
+      padding: 25px;
+      border-radius: 10px;
       width: 250px;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.05);
     }
-  </style>
 
+    .card h3 {
+      margin-bottom: 10px;
+    }
+
+    .footer {
+      margin-top: 120px;
+      padding: 20px;
+      font-size: 13px;
+      color: #888;
+    }
+
+  </style>
 </head>
 
 <body>
 
-<!-- NAVBAR -->
-<div class="navbar">
-  <h3>Online Schedule</h3>
-  <button class="primary" onclick="goDashboard()">Dashboard</button>
+<div class="topbar">
+  <div class="logo">Online Schedule</div>
+  <button class="btn btn-primary" onclick="location.href='dashboard.html'">Dashboard</button>
 </div>
 
-<!-- HERO -->
 <div class="hero">
-  <h1>Shift Schedules, <span>Simplified</span></h1>
+  <div class="title">
+    Shift Schedules
+    <span>Made Simple</span>
+  </div>
 
-  <p>
-    Upload PDF schedules, edit them with elegance, and print or save for later.
-    Perfect for managing employee shifts with precision and style.
-  </p>
+  <div class="subtitle">
+    Upload PDF schedules, edit them with ease, and print or export in seconds.
+  </div>
 
   <div class="buttons">
-    <button class="primary" onclick="goDashboard()">⬆ Upload Schedule</button>
-    <button class="secondary" onclick="goDashboard()">View Schedules</button>
+    <button class="btn btn-primary" onclick="location.href='dashboard.html'">
+      ↑ Upload Schedule
+    </button>
+
+    <button class="btn btn-secondary" onclick="location.href='dashboard.html'">
+      View Schedules
+    </button>
   </div>
 </div>
 
-<!-- FEATURES -->
 <div class="features">
-  <h2>Why Choose Online Schedule?</h2>
+  <div class="card">
+    <h3>⚡ Fast Processing</h3>
+    <p>Upload your PDF and get your schedule instantly.</p>
+  </div>
 
-  <div class="cards">
-    <div class="card">
-      <h4>⚡ Fast Processing</h4>
-      <p>Upload your PDF and get your schedule instantly.</p>
-    </div>
+  <div class="card">
+    <h3>📊 Accurate Data</h3>
+    <p>Extract shifts perfectly without errors.</p>
+  </div>
 
-    <div class="card">
-      <h4>📊 Accurate Data</h4>
-      <p>Extract shifts perfectly without errors.</p>
-    </div>
-
-    <div class="card">
-      <h4>🖨 Easy Export</h4>
-      <p>Print or export schedules in one click.</p>
-    </div>
+  <div class="card">
+    <h3>📄 Easy Export</h3>
+    <p>Print or export schedules in one click.</p>
   </div>
 </div>
 
-<script>
-function goDashboard() {
-  window.location.href = "dashboard.html";
-}
-</script>
+<div class="footer">
+  Created by <b>Júnior Zanon</b>
+</div>
 
 </body>
 </html>

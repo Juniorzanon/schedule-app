@@ -1,74 +1,44 @@
-body {
-  font-family: 'Segoe UI', sans-serif;
-  margin: 0;
-  background: #f5f7fb;
-}
+@media print {
 
-.container {
-  max-width: 1100px;
-  margin: auto;
-  padding: 40px 20px;
-}
+  body {
+    zoom: 0.8;
+  }
 
-.hero {
-  text-align: center;
-  padding: 80px 20px;
-}
+  body * {
+    visibility: hidden;
+  }
 
-.hero h1 {
-  font-size: 48px;
-  font-weight: 700;
-}
+  #printArea, #printArea * {
+    visibility: visible;
+  }
 
-.hero p {
-  color: #666;
-  font-size: 18px;
-  margin-top: 10px;
-}
+  #printArea {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
 
-.buttons {
-  margin-top: 30px;
-}
+  table {
+    font-size: 11px;
+  }
 
-button {
-  padding: 12px 20px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  margin: 5px;
-}
+  th, td {
+    padding: 4px;
+  }
 
-.primary {
-  background: #2f80ed;
-  color: white;
-}
+  h1 {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
 
-.secondary {
-  background: #eaeaea;
-}
+  tr {
+    page-break-inside: avoid;
+  }
 
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  padding: 15px 30px;
-  background: white;
-  border-bottom: 1px solid #eee;
-}
+  /* 🔥 ESSA LINHA RESOLVE SEU PROBLEMA */
+  thead {
+    display: table-row-group;
+  }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-.table th {
-  background: #2f80ed;
-  color: white;
-  padding: 10px;
-}
-
-.table td {
-  padding: 8px;
-  border-bottom: 1px solid #eee;
 }
