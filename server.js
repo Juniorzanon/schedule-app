@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
 const ExcelJS = require("exceljs");
-const { execFile } = require("child_process");
+const pdf = require("pdf-parse");
 
 const upload = multer({ dest: "uploads/" });
 
@@ -18,20 +18,38 @@ app.use(express.json());
 let extractedData = [];
 
 // =====================
-// UPLOAD
+// UPLOAD (AGORA EM JS)
 // =====================
-app.post("/upload", upload.single("file"), (req, res) => {
-  execFile("python", ["parser.py", req.file.path], (error, stdout) => {
-    if (error) {
-      console.error(error);
-      return res.status(500).send("Parser error");
-    }
+app.post("/upload", upload.single("file"), async (req, res) => {
+  try {
+    const dataBuffer = fs.readFileSync(req.file.path);
+    const data = await pdf(dataBuffer);
 
-    const parsed = JSON.parse(stdout);
-    extractedData = parsed.data || parsed;
+    const lines = data.text.split("\n");
+
+    extractedData = [];
+
+    lines.forEach(line => {
+      const match = line.match(/(.+?)\s+(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+
+      if (match) {
+        extractedData.push({
+          name: match[1].trim(),
+          start: match[2],
+          end: match[3],
+          day: "Mon" // temporário (vamos melhorar depois)
+        });
+      }
+    });
+
+    console.log("Parsed:", extractedData.length, "rows");
 
     res.json({ success: true });
-  });
+
+  } catch (err) {
+    console.error("PDF parse error:", err);
+    res.status(500).send("Error parsing PDF");
+  }
 });
 
 // =====================
@@ -81,9 +99,10 @@ app.post("/export", async (req, res) => {
 });
 
 // =====================
+// START SERVER
+// =====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
-// update trigger
