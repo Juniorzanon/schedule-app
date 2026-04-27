@@ -2,171 +2,93 @@ const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
 const ExcelJS = require("exceljs");
-const pdf = require("pdf-parse");
-const path = require("path");
+const { execFile } = require("child_process");
+const { v4: uuidv4 } = require('uuid'); // Para gerar IDs únicos
+const cors = require('cors'); // Para lidar com CORS
 
 const app = express();
 
-// =====================
-// UPLOAD CONFIG
-// =====================
+// Configuração do Multer para upload de arquivos
+const upload = multer({ dest: "uploads/" });
+
+// Cria a pasta 'uploads' se não existir
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
 
-const upload = multer({ dest: "uploads/" });
+// Armazenamento temporário de dados por sessão (em um ambiente real, use um banco de dados ou sistema de sessão)
+const sessionData = {}; // { sessionId: extractedData }
 
-// =====================
-// MIDDLEWARE
-// =====================
-app.use(express.static("."));
+// Middlewares
+app.use(cors()); // Habilita CORS para todas as rotas
+app.use(express.static("public"));
 app.use(express.json());
 
-// =====================
-// DATA GLOBAL
-// =====================
-let extractedData = [];
+// ===================== //
+// UPLOAD E PROCESSAMENTO //
+// ===================== //
+app.post("/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("Nenhum arquivo enviado.");
+  }
 
-// =====================
-// UPLOAD + PARSER
-// =====================
-app.post("/upload", upload.single("file"), async (req, res) => {
-  try {
-    const dataBuffer = fs.readFileSync(req.file.path);
-    const data = await pdf(dataBuffer);
+  const filePath = req.file.path;
+  const sessionId = uuidv4(); // Gera um ID de sessão único para este upload
 
-    let text = data.text;
-
-    console.log("===== RAW TEXT START =====");
-    console.log(text);
-    console.log("===== RAW TEXT END =====");
-
-    extractedData = [];
-
-    // Normalização básica preservando linhas
-    text = text.replace(/\r\n/g, "\n");
-
-    // Identificar blocos de dias
-    const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    const dayMap = {
-      Monday: "Mon", Tuesday: "Tue", Wednesday: "Wed", Thursday: "Thu", 
-      Friday: "Fri", Saturday: "Sat", Sunday: "Sun"
-    };
-
-    // Encontrar posições de cada dia no texto
-    let dayPositions = [];
-    dayNames.forEach(day => {
-      const regex = new RegExp(day, "gi");
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        dayPositions.push({ day: dayMap[day] || day.slice(0, 3), index: match.index });
-      }
+  execFile("python", ["parser.py", filePath], (error, stdout, stderr) => {
+    // Limpa o arquivo enviado após o processamento (ou falha)
+    fs.unlink(filePath, (unlinkErr) => {
+      if (unlinkErr) console.error("Erro ao excluir o arquivo temporário de upload:", unlinkErr);
     });
 
-    // Ordenar posições por índice
-    dayPositions.sort((a, b) => a.index - b.index);
-
-    if (dayPositions.length === 0) {
-      // Se não achar dias, tenta processar o texto todo como segunda
-      parseRobust(text, "Mon");
-    } else {
-      for (let i = 0; i < dayPositions.length; i++) {
-        const start = dayPositions[i].index;
-        const end = dayPositions[i + 1] ? dayPositions[i + 1].index : text.length;
-        const block = text.slice(start, end);
-        parseRobust(block, dayPositions[i].day);
-      }
+    if (error) {
+      console.error("Erro na execução do parser.py:", stderr || error);
+      return res.status(500).send("Erro no processamento do arquivo: " + (stderr || error.message));
     }
 
-    // Remover duplicatas exatas (nome, dia, inicio, fim)
-    extractedData = extractedData.filter((v, i, a) => 
-      a.findIndex(t => (t.name === v.name && t.day === v.day && t.start === v.start && t.end === v.end)) === i
-    );
-
-    console.log(`===== TOTAL EXTRACTED: ${extractedData.length} entries =====`);
-
-    fs.unlinkSync(req.file.path);
-    res.json({ success: true, count: extractedData.length });
-
-  } catch (err) {
-    console.error("PARSE ERROR:", err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-function parseRobust(textBlock, day) {
-  // Dividir por linhas e limpar
-  const lines = textBlock.split("\n").map(l => l.trim()).filter(l => l.length > 5);
-
-  lines.forEach(line => {
-    // 1. Procurar por horários no formato HH:MM ou HHMM
-    // Captura sequências de 4 dígitos ou dígitos com dois pontos
-    const timeRegex = /(\d{2}[:\s]?\d{2})/g;
-    const timesFound = line.match(timeRegex);
-
-    if (timesFound && timesFound.length >= 2) {
-      // Limpar os horários encontrados (remover espaços, adicionar : se necessário)
-      const cleanTimes = timesFound.map(t => {
-        let clean = t.replace(/\s/g, "");
-        if (!clean.includes(":") && clean.length === 4) {
-          clean = clean.slice(0, 2) + ":" + clean.slice(2);
-        }
-        return clean;
-      }).filter(t => t.includes(":") && t.length === 5);
-
-      if (cleanTimes.length >= 2) {
-        // 2. Extrair o nome
-        // O nome geralmente vem ANTES dos horários. 
-        // Vamos pegar tudo que vem antes do primeiro horário e limpar números.
-        const firstTime = timesFound[0];
-        const firstTimeIndex = line.indexOf(firstTime);
-        let potentialName = line.slice(0, firstTimeIndex).trim();
-
-        // Se o nome estiver vazio, talvez a estrutura seja diferente, ignoramos
-        if (potentialName.length < 2) return;
-
-        // Limpeza agressiva do nome:
-        // Remove qualquer sequência de 4 dígitos (que seriam horários que sobraram)
-        // Remove caracteres especiais e números isolados
-        let cleanName = potentialName
-          .replace(/\d{4}/g, "") // Remove horários colados
-          .replace(/\d/g, "")    // Remove qualquer dígito que sobrou
-          .replace(/[-_]/g, " ") // Remove traços
-          .replace(/\s+/g, " ")  // Normaliza espaços
-          .trim();
-
-        // Só adiciona se o nome for válido (não apenas símbolos)
-        if (cleanName.length > 2) {
-          extractedData.push({
-            name: cleanName,
-            start: cleanTimes[0],
-            end: cleanTimes[cleanTimes.length - 1],
-            day: day
-          });
-        }
-      }
+    try {
+      const parsed = JSON.parse(stdout);
+      sessionData[sessionId] = parsed.data || parsed; // Armazena os dados com o ID da sessão
+      res.json({ success: true, sessionId: sessionId });
+    } catch (jsonError) {
+      console.error("Erro ao fazer parse do JSON do parser.py:", jsonError, "Stdout:", stdout);
+      return res.status(500).send("Erro ao processar a saída do parser.py. Verifique o formato JSON.");
     }
   });
-}
+});
 
-// =====================
-// GENERATE
-// =====================
+// ===================== //
+// GERAR DADOS FILTRADOS //
+// ===================== //
 app.post("/generate", (req, res) => {
-  const { day } = req.body;
+  const { day, sessionId } = req.body;
+
+  if (!sessionId || !sessionData[sessionId]) {
+    return res.status(404).send("Dados da sessão não encontrados ou inválidos.");
+  }
+
+  const extractedData = sessionData[sessionId];
+
   const filtered = extractedData
     .filter(e => e.day === day)
     .sort((a, b) => a.start.localeCompare(b.start));
+
   res.json(filtered);
 });
 
-// =====================
-// EXPORT
-// =====================
+// ===================== //
+// EXPORTAR PARA EXCEL //
+// ===================== //
 app.post("/export", async (req, res) => {
   const { data } = req.body;
+
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return res.status(400).send("Nenhum dado para exportar.");
+  }
+
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Schedule");
+
   sheet.columns = [
     { header: "Name", key: "name", width: 30 },
     { header: "Start", key: "start", width: 15 },
@@ -174,15 +96,40 @@ app.post("/export", async (req, res) => {
     { header: "Break 30", key: "break30", width: 15 },
     { header: "Break 15", key: "break15", width: 15 }
   ];
+
   data.forEach(row => {
-    sheet.addRow({ name: row.name, start: row.start, end: row.end, break30: "", break15: "" });
+    sheet.addRow({
+      name: row.name,
+      start: row.start,
+      end: row.end,
+      break30: "", // Assumindo que estes campos são preenchidos posteriormente ou não são relevantes para a exportação atual
+      break15: ""
+    });
   });
-  const filePath = "schedule.xlsx";
-  await workbook.xlsx.writeFile(filePath);
-  res.download(filePath);
+
+  const fileName = `schedule-${uuidv4()}.xlsx`; // Nome de arquivo único
+  const filePath = fileName;
+
+  try {
+    await workbook.xlsx.writeFile(filePath);
+    res.download(filePath, "schedule.xlsx", (err) => {
+      if (err) {
+        console.error("Erro ao enviar o arquivo para download:", err);
+        // Se o download falhar, o arquivo temporário ainda precisa ser limpo
+      }
+      // Limpa o arquivo temporário após o download (ou tentativa de download)
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) console.error("Erro ao excluir o arquivo temporário de exportação:", unlinkErr);
+      });
+    });
+  } catch (writeError) {
+    console.error("Erro ao escrever o arquivo Excel:", writeError);
+    res.status(500).send("Erro ao gerar o arquivo Excel.");
+  }
 });
 
+// =====================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("🚀 Server running on port " + PORT);
+  console.log("Server running on port " + PORT);
 });
