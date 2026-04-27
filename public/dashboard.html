@@ -117,7 +117,7 @@ td[contenteditable] {
 <div class="card">
   <div class="controls">
     <input type="file" id="fileInput">
-    <button onclick="uploadFile()">Upload</button>
+    <button onclick="uploadFile(event)">Upload</button>
   </div>
 </div>
 
@@ -168,12 +168,28 @@ async function uploadFile() {
   const formData = new FormData();
   formData.append("file", file);
 
-  await fetch("/upload", {
-    method: "POST",
-    body: formData
-  });
+  const btn = event.target;
+  const originalText = btn.innerText;
+  btn.innerText = "Uploading...";
+  btn.disabled = true;
 
-  alert("Upload done!");
+  try {
+    const res = await fetch("/upload", {
+      method: "POST",
+      body: formData
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert(`Upload done! ${result.count} shifts extracted.`);
+    } else {
+      alert("Error uploading file.");
+    }
+  } catch (err) {
+    alert("Error connecting to server.");
+  } finally {
+    btn.innerText = originalText;
+    btn.disabled = false;
+  }
 }
 
 // =======================
