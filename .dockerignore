@@ -1,0 +1,7 @@
+node_modules
+.git
+uploads
+*.log
+*.xlsx
+*.pdf
+database.db

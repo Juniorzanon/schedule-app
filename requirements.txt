@@ -1,2 +1,1 @@
-pdfplumber
-pandas
+pdfplumber==0.7.0

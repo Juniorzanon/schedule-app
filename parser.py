@@ -1,5 +1,4 @@
 import pdfplumber
-import pandas as pd
 import sys
 import json
 

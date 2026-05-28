@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid'); // Para gerar IDs únicos
 const cors = require('cors'); // Para lidar com CORS
 
 const app = express();
+const PYTHON_BIN = process.env.PYTHON_BIN || (process.platform === "win32" ? "python" : "python3");
 
 // Configuração do Multer para upload de arquivos
 const upload = multer({ dest: "uploads/" });
@@ -35,7 +36,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
   const filePath = req.file.path;
   const sessionId = uuidv4(); // Gera um ID de sessão único para este upload
 
-  execFile("python", ["parser.py", filePath], (error, stdout, stderr) => {
+  execFile(PYTHON_BIN, ["parser.py", filePath], (error, stdout, stderr) => {
     // Limpa o arquivo enviado após o processamento (ou falha)
     fs.unlink(filePath, (unlinkErr) => {
       if (unlinkErr) console.error("Erro ao excluir o arquivo temporário de upload:", unlinkErr);
@@ -48,8 +49,9 @@ app.post("/upload", upload.single("file"), (req, res) => {
 
     try {
       const parsed = JSON.parse(stdout);
-      sessionData[sessionId] = parsed.data || parsed; // Armazena os dados com o ID da sessão
-      res.json({ success: true, sessionId: sessionId });
+      const extractedData = parsed.data || parsed;
+      sessionData[sessionId] = extractedData; // Armazena os dados com o ID da sessão
+      res.json({ success: true, sessionId: sessionId, count: extractedData.length });
     } catch (jsonError) {
       console.error("Erro ao fazer parse do JSON do parser.py:", jsonError, "Stdout:", stdout);
       return res.status(500).send("Erro ao processar a saída do parser.py. Verifique o formato JSON.");
@@ -102,26 +104,19 @@ app.post("/export", async (req, res) => {
       name: row.name,
       start: row.start,
       end: row.end,
-      break30: "", // Assumindo que estes campos são preenchidos posteriormente ou não são relevantes para a exportação atual
-      break15: ""
+      break30: row.break30 || "",
+      break15: row.break15 || ""
     });
   });
 
-  const fileName = `schedule-${uuidv4()}.xlsx`; // Nome de arquivo único
-  const filePath = fileName;
-
   try {
-    await workbook.xlsx.writeFile(filePath);
-    res.download(filePath, "schedule.xlsx", (err) => {
-      if (err) {
-        console.error("Erro ao enviar o arquivo para download:", err);
-        // Se o download falhar, o arquivo temporário ainda precisa ser limpo
-      }
-      // Limpa o arquivo temporário após o download (ou tentativa de download)
-      fs.unlink(filePath, (unlinkErr) => {
-        if (unlinkErr) console.error("Erro ao excluir o arquivo temporário de exportação:", unlinkErr);
-      });
-    });
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", 'attachment; filename="schedule.xlsx"');
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (writeError) {
     console.error("Erro ao escrever o arquivo Excel:", writeError);
     res.status(500).send("Erro ao gerar o arquivo Excel.");

@@ -52,6 +52,21 @@ body {
   flex-wrap:wrap;
 }
 
+.status {
+  min-height:22px;
+  margin:14px 0 0;
+  text-align:center;
+  color:#475569;
+}
+
+.status.success {
+  color:#15803d;
+}
+
+.status.error {
+  color:#b91c1c;
+}
+
 button {
   padding:10px;
   background:#3b6edc;
@@ -96,6 +111,60 @@ td[contenteditable] {
 .dark td[contenteditable] {
   background:#1e293b;
 }
+
+@media print {
+  @page {
+    margin:10mm;
+  }
+
+  html,
+  body {
+    background:white;
+    color:#000;
+    margin:0;
+    padding:0;
+  }
+
+  .header,
+  .container > h2,
+  .container > .card:not(#printArea),
+  #printTitle {
+    display:none !important;
+  }
+
+  .container {
+    max-width:none;
+    margin:0;
+    padding:0;
+  }
+
+  #printArea {
+    width:100%;
+    padding:0;
+    margin:0;
+    background:white;
+    color:#000;
+    border-radius:0;
+  }
+
+  #printArea table {
+    width:100%;
+    font-size:13px;
+  }
+
+  #printArea th,
+  #printArea td {
+    padding:6px 8px;
+  }
+
+  #printArea input {
+    display:none;
+  }
+
+  #printArea thead {
+    display:table-row-group;
+  }
+}
 </style>
 </head>
 
@@ -117,8 +186,9 @@ td[contenteditable] {
 <div class="card">
   <div class="controls">
     <input type="file" id="fileInput">
-    <button onclick="uploadFile(event)">Upload</button>
+    <button id="uploadBtn" onclick="uploadFile()">Upload</button>
   </div>
+  <p id="statusMessage" class="status"></p>
 </div>
 
 <div class="card">
@@ -136,7 +206,8 @@ td[contenteditable] {
   </div>
 </div>
 
-<div class="card">
+<div class="card" id="printArea">
+  <h3 id="printTitle">Generated Schedule</h3>
   <table id="table">
     <thead>
       <tr>
@@ -156,6 +227,13 @@ td[contenteditable] {
 <script>
 
 let currentData = [];
+let currentSessionId = null;
+
+function setStatus(message, type = "") {
+  const status = document.getElementById("statusMessage");
+  status.textContent = message;
+  status.className = `status ${type}`;
+}
 
 // =======================
 // UPLOAD
@@ -168,24 +246,34 @@ async function uploadFile() {
   const formData = new FormData();
   formData.append("file", file);
 
-  const btn = event.target;
+  const btn = document.getElementById("uploadBtn");
   const originalText = btn.innerText;
   btn.innerText = "Uploading...";
   btn.disabled = true;
+  setStatus("Uploading and reading schedule...");
 
   try {
     const res = await fetch("/upload", {
       method: "POST",
       body: formData
     });
+
+    if (!res.ok) {
+      const message = await res.text();
+      throw new Error(message || "Upload failed.");
+    }
+
     const result = await res.json();
     if (result.success) {
-      alert(`Upload done! ${result.count} shifts extracted.`);
+      currentSessionId = result.sessionId;
+      currentData = [];
+      clearTable();
+      setStatus(`Upload done. ${result.count} shifts extracted.`, "success");
     } else {
-      alert("Error uploading file.");
+      throw new Error("Error uploading file.");
     }
   } catch (err) {
-    alert("Error connecting to server.");
+    setStatus(err.message || "Error connecting to server.", "error");
   } finally {
     btn.innerText = originalText;
     btn.disabled = false;
@@ -196,24 +284,41 @@ async function uploadFile() {
 // GENERATE
 // =======================
 async function generateSchedule() {
+  if (!currentSessionId) {
+    setStatus("Upload a schedule file before generating.", "error");
+    return;
+  }
+
   const day = document.getElementById("daySelect").value;
 
-  const res = await fetch("/generate", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ day })
-  });
+  try {
+    const res = await fetch("/generate", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ day, sessionId: currentSessionId })
+    });
 
-  const data = await res.json();
-  currentData = data;
+    if (!res.ok) {
+      const message = await res.text();
+      throw new Error(message || "Could not generate schedule.");
+    }
 
-  renderTable(data);
+    const data = await res.json();
+    currentData = data;
+
+    renderTable(data);
+    setStatus(`${data.length} shifts found for ${day}.`, "success");
+  } catch (err) {
+    setStatus(err.message || "Error generating schedule.", "error");
+  }
 }
 
 // =======================
 function renderTable(data) {
   const tbody = document.querySelector("#table tbody");
   tbody.innerHTML = "";
+  document.getElementById("printTitle").textContent =
+    `${document.getElementById("daySelect").value} Schedule`;
 
   data.forEach(row => {
     const tr = document.createElement("tr");
@@ -236,29 +341,69 @@ function renderTable(data) {
 function clearTable() {
   document.querySelector("#table tbody").innerHTML = "";
   currentData = [];
+  document.getElementById("printTitle").textContent = "Generated Schedule";
+}
+
+function getTableData() {
+  return Array.from(document.querySelectorAll("#table tbody tr")).map(row => {
+    const cells = row.querySelectorAll("td");
+
+    return {
+      name: cells[0].textContent.trim(),
+      start: cells[1].textContent.trim(),
+      end: cells[2].textContent.trim(),
+      break30: cells[3].querySelector("input").checked ? "Yes" : "",
+      break15: cells[4].querySelector("input").checked ? "Yes" : ""
+    };
+  });
 }
 
 // =======================
 // EXPORT
 // =======================
 async function exportExcel() {
-  const res = await fetch("/export", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ data: currentData })
-  });
+  const tableData = getTableData();
 
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  if (!tableData.length) {
+    setStatus("Generate a schedule before exporting.", "error");
+    return;
+  }
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "schedule.xlsx";
-  a.click();
+  try {
+    const res = await fetch("/export", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ data: tableData })
+    });
+
+    if (!res.ok) {
+      const message = await res.text();
+      throw new Error(message || "Could not export schedule.");
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "schedule.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setStatus("Excel file created.", "success");
+  } catch (err) {
+    setStatus(err.message || "Error exporting schedule.", "error");
+  }
 }
 
 // =======================
 function printPage() {
+  if (!getTableData().length) {
+    setStatus("Generate a schedule before printing.", "error");
+    return;
+  }
+
   window.print();
 }
 
