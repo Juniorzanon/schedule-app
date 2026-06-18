@@ -1,24 +1,33 @@
 const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
+const path = require("path");
 const ExcelJS = require("exceljs");
 const { execFile } = require("child_process");
-const { v4: uuidv4 } = require('uuid'); // Para gerar IDs únicos
-const cors = require('cors'); // Para lidar com CORS
+const { v4: uuidv4 } = require('uuid');
+const cors = require('cors');
 
 const app = express();
 const PYTHON_BIN = process.env.PYTHON_BIN || (process.platform === "win32" ? "python" : "python3");
 
-// Configuração do Multer para upload de arquivos
 const upload = multer({ dest: "uploads/" });
 
-// Cria a pasta 'uploads' se não existir
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
 
-// Armazenamento temporário de dados por sessão (em um ambiente real, use um banco de dados ou sistema de sessão)
-const sessionData = {}; // { sessionId: extractedData }
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 horas
+const sessionData = {}; // { sessionId: { data, createdAt } }
+
+// Limpa sessões expiradas a cada 30 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const id of Object.keys(sessionData)) {
+    if (now - sessionData[id].createdAt > SESSION_TTL_MS) {
+      delete sessionData[id];
+    }
+  }
+}, 30 * 60 * 1000);
 
 // Middlewares
 app.use(cors()); // Habilita CORS para todas as rotas
@@ -33,8 +42,14 @@ app.post("/upload", upload.single("file"), (req, res) => {
     return res.status(400).send("Nenhum arquivo enviado.");
   }
 
+  const originalName = req.file.originalname || "";
+  if (path.extname(originalName).toLowerCase() !== ".pdf") {
+    fs.unlink(req.file.path, () => {});
+    return res.status(400).send("Apenas arquivos PDF são aceitos.");
+  }
+
   const filePath = req.file.path;
-  const sessionId = uuidv4(); // Gera um ID de sessão único para este upload
+  const sessionId = uuidv4();
 
   execFile(PYTHON_BIN, ["parser.py", filePath], (error, stdout, stderr) => {
     // Limpa o arquivo enviado após o processamento (ou falha)
@@ -50,7 +65,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
     try {
       const parsed = JSON.parse(stdout);
       const extractedData = parsed.data || parsed;
-      sessionData[sessionId] = extractedData; // Armazena os dados com o ID da sessão
+      sessionData[sessionId] = { data: extractedData, createdAt: Date.now() };
       res.json({ success: true, sessionId: sessionId, count: extractedData.length });
     } catch (jsonError) {
       console.error("Erro ao fazer parse do JSON do parser.py:", jsonError, "Stdout:", stdout);
@@ -66,10 +81,10 @@ app.post("/generate", (req, res) => {
   const { day, sessionId } = req.body;
 
   if (!sessionId || !sessionData[sessionId]) {
-    return res.status(404).send("Dados da sessão não encontrados ou inválidos.");
+    return res.status(404).send("Sessão expirada ou inválida. Faça o upload novamente.");
   }
 
-  const extractedData = sessionData[sessionId];
+  const extractedData = sessionData[sessionId].data;
 
   const filtered = extractedData
     .filter(e => e.day === day)

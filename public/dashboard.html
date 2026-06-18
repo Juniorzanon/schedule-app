@@ -2,168 +2,568 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Shift</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Online Schedule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-body {
-  margin:0;
-  font-family:'Segoe UI';
-  background:#f4f6fb;
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue:       #3b6edc;
+  --blue-dark:  #2d57b5;
+  --blue-light: #eef3ff;
+  --bg:         #f8fafc;
+  --surface:    #ffffff;
+  --border:     #e2e8f0;
+  --text:       #0f172a;
+  --muted:      #64748b;
+  --row-alt:    #f8fafc;
+  --row-hover:  #f1f5fe;
+  --editable:   #eef3ff;
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
 }
 
-/* DARK MODE */
 .dark {
-  background:#0f172a;
-  color:#e5e7eb;
+  --bg:        #0f172a;
+  --surface:   #1e293b;
+  --border:    #334155;
+  --text:      #f1f5f9;
+  --muted:     #94a3b8;
+  --row-alt:   #1a2844;
+  --row-hover: #1e3a5f;
+  --editable:  #1e3460;
+  --blue-light:#1e2f5a;
 }
 
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background .2s, color .2s;
+}
+
+/* ── Header ── */
 .header {
-  display:flex;
-  justify-content:space-between;
-  padding:15px 30px;
-  background:white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 28px;
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.dark .header {
-  background:#1e293b;
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
 }
 
+.logo-text { display: flex; flex-direction: column; gap: 1px; }
+
+.logo-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.logo-by {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.logo-icon {
+  width: 30px;
+  height: 30px;
+  background: var(--blue);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logo-icon svg { width: 16px; height: 16px; }
+
+.header-actions { display: flex; gap: 8px; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .14s, border-color .14s, transform .1s;
+  white-space: nowrap;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.btn:active { transform: scale(.97); }
+.btn svg { flex-shrink: 0; }
+
+.btn-icon {
+  border-color: var(--border);
+}
+.btn-icon:hover { background: var(--bg); }
+
+.btn-primary {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+}
+.btn-primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+.btn-ghost:hover { background: var(--bg); color: var(--text); }
+
+.btn-danger {
+  background: transparent;
+  border-color: var(--border);
+  color: #b91c1c;
+}
+.dark .btn-danger { color: #f87171; }
+.btn-danger:hover { background: #fff1f2; border-color: #fca5a5; }
+.dark .btn-danger:hover { background: #2d1515; border-color: #7f1d1d; }
+
+/* ── Layout ── */
 .container {
-  max-width:1100px;
-  margin:auto;
-  padding:20px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.page-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 28px;
 }
 
 .card {
-  background:white;
-  padding:20px;
-  margin-bottom:20px;
-  border-radius:10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 16px;
 }
 
-.dark .card {
-  background:#1e293b;
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-.controls {
-  display:flex;
-  gap:10px;
-  justify-content:center;
-  flex-wrap:wrap;
+.card-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
 }
 
-.status {
-  min-height:22px;
-  margin:14px 0 0;
-  text-align:center;
-  color:#475569;
+/* ── Upload zone ── */
+.upload-zone {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  position: relative;
 }
 
-.status.success {
-  color:#15803d;
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: var(--blue);
+  background: var(--blue-light);
 }
 
-.status.error {
-  color:#b91c1c;
+.upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 
-button {
-  padding:10px;
-  background:#3b6edc;
-  color:white;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
+.upload-icon {
+  width: 44px;
+  height: 44px;
+  background: var(--blue-light);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
 }
 
-.clear {
-  background:#555;
+.upload-icon svg { width: 22px; height: 22px; stroke: var(--blue); }
+
+.upload-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text);
 }
 
-.dark .clear {
-  background:#475569;
+.upload-hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.upload-hint span {
+  color: var(--blue);
+  font-weight: 500;
+}
+
+.upload-filename {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  background: var(--blue-light);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: none;
+}
+
+.upload-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+/* ── Controls ── */
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.controls-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+
+select, input[type="date"] {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .14s;
+}
+
+select:focus, input[type="date"]:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(59,110,220,.12);
+}
+
+select { padding-right: 28px; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.controls-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+/* ── Status message ── */
+.status-bar {
+  min-height: 0;
+  overflow: hidden;
+  transition: max-height .25s ease, opacity .2s;
+  max-height: 0;
+  opacity: 0;
+}
+
+.status-bar.visible {
+  max-height: 60px;
+  opacity: 1;
+  margin-top: 14px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.status-pill.success {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.status-pill.error {
+  background: #fff1f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.status-pill.info {
+  background: var(--blue-light);
+  color: var(--blue);
+  border-color: #bfdbfe;
+}
+
+.dark .status-pill.success { background: #052e16; border-color: #166534; color: #4ade80; }
+.dark .status-pill.error   { background: #2d1515; border-color: #7f1d1d; color: #f87171; }
+.dark .status-pill.info    { background: #1e2f5a; border-color: #1d4ed8; color: #93c5fd; }
+
+/* ── Spinner ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Table ── */
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
 }
 
 table {
-  width:100%;
-  border-collapse:collapse;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
 }
 
-th {
-  background:#3b6edc;
-  color:white;
-  padding:10px;
+thead th {
+  background: var(--blue);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 11px 14px;
+  text-align: left;
+  white-space: nowrap;
 }
+
+thead th:first-child { border-radius: 0; }
+
+tbody tr:nth-child(even) td { background: var(--row-alt); }
+
+tbody tr:hover td { background: var(--row-hover); }
 
 td {
-  border:1px solid #eee;
-  padding:8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
 }
 
-.dark td {
-  border-color:#334155;
-}
+tbody tr:last-child td { border-bottom: none; }
 
 td[contenteditable] {
-  background:#eef3ff;
+  background: var(--editable);
+  cursor: text;
+  outline: none;
+  transition: box-shadow .12s;
 }
 
-.dark td[contenteditable] {
-  background:#1e293b;
+td[contenteditable]:focus {
+  box-shadow: inset 0 0 0 2px var(--blue);
 }
 
+td:last-child, td:nth-last-child(2) {
+  text-align: center;
+  width: 90px;
+}
+
+/* custom checkbox */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+  position: relative;
+  transition: background .12s, border-color .12s;
+  vertical-align: middle;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 9px;
+  border: 2px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+/* ── Print title ── */
+#printTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--muted);
+}
+
+.empty-state svg {
+  width: 40px;
+  height: 40px;
+  stroke: var(--border);
+  margin-bottom: 12px;
+}
+
+.empty-state p { font-size: 14px; }
+
+/* ── Print ── */
 @media print {
-  @page {
-    margin:10mm;
-  }
+  @page { size: A4 landscape; margin: 6mm 8mm; }
 
-  html,
-  body {
-    background:white;
-    color:#000;
-    margin:0;
-    padding:0;
-  }
+  html, body { background: white; color: #000; margin: 0; padding: 0; }
 
   .header,
-  .container > h2,
-  .container > .card:not(#printArea),
-  #printTitle {
-    display:none !important;
-  }
+  .page-title,
+  .page-sub,
+  #uploadCard,
+  #controlsCard { display: none !important; }
 
-  .container {
-    max-width:none;
-    margin:0;
-    padding:0;
-  }
+  .container { max-width: none; margin: 0; padding: 0; }
 
   #printArea {
-    width:100%;
-    padding:0;
-    margin:0;
-    background:white;
-    color:#000;
-    border-radius:0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    background: white;
+    color: #000;
+    border: none;
+    border-radius: 0;
   }
 
-  #printArea table {
-    width:100%;
-    font-size:13px;
+  #printTitle { font-size: 11px; font-weight: bold; margin: 0 0 3px; text-align: center; }
+
+  .table-wrapper { border: none; border-radius: 0; overflow: visible; }
+
+  table { width: 100%; font-size: 8.5px; border-collapse: collapse; table-layout: fixed; }
+
+  /* Name column takes remaining space; time cols fixed; break cols narrow */
+  thead th:nth-child(1) { width: auto; }
+  thead th:nth-child(2),
+  thead th:nth-child(3) { width: 52px; }
+  thead th:nth-child(4),
+  thead th:nth-child(5) { width: 48px; }
+
+  thead th {
+    background: #3b6edc !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color: white !important;
+    padding: 3px 5px;
+    font-size: 8.5px;
+    white-space: nowrap;
   }
 
-  #printArea th,
-  #printArea td {
-    padding:6px 8px;
+  td {
+    border: 1px solid #ccc;
+    padding: 2px 5px;
+    font-size: 8.5px;
+    background: white !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  #printArea input {
-    display:none;
-  }
+  tbody tr:nth-child(even) td { background: #f5f7ff !important; }
 
-  #printArea thead {
-    display:table-row-group;
-  }
+  input[type="checkbox"] { width: 10px; height: 10px; }
+
+  tr { page-break-inside: avoid; }
 }
 </style>
 </head>
@@ -171,125 +571,229 @@ td[contenteditable] {
 <body>
 
 <div class="header">
-  <b>Online Schedule</b>
-
-  <div>
-    <button onclick="toggleDark()">🌙</button>
-    <button onclick="goHome()">Home</button>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <span class="logo-name">Online Schedule</span>
+      <span class="logo-by">by Júnior Zanon</span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-icon" onclick="toggleDark()" title="Toggle dark mode">
+      <svg id="darkIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+      </svg>
+    </button>
+    <button class="btn btn-icon" onclick="goHome()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </button>
   </div>
 </div>
 
 <div class="container">
 
-<h2 style="text-align:center;">Shift</h2>
+  <div class="page-title">Shift Dashboard</div>
+  <div class="page-sub">Upload a PDF roster, pick a day, and generate your schedule.</div>
 
-<div class="card">
-  <div class="controls">
-    <input type="file" id="fileInput">
-    <button id="uploadBtn" onclick="uploadFile()">Upload</button>
+  <!-- Upload card -->
+  <div class="card" id="uploadCard">
+    <div class="card-header">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span class="card-label">Upload PDF</span>
+    </div>
+
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".pdf" onchange="onFileChosen(event)">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="upload-title">Drop your PDF here</div>
+      <div class="upload-hint">or <span>browse to upload</span> &mdash; PDF files only</div>
+      <div class="upload-filename" id="uploadFilename">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        <span id="uploadFilenameText"></span>
+      </div>
+    </div>
+
+    <div class="upload-row">
+      <button id="uploadBtn" class="btn btn-primary" onclick="uploadFile()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Process PDF
+      </button>
+    </div>
+
+    <div class="status-bar" id="uploadStatus">
+      <div class="status-pill" id="uploadStatusPill"></div>
+    </div>
   </div>
-  <p id="statusMessage" class="status"></p>
-</div>
 
-<div class="card">
-  <div class="controls">
-    <select id="daySelect">
-      <option>Mon</option><option>Tue</option><option>Wed</option>
-      <option>Thu</option><option>Fri</option><option>Sat</option>
-      <option>Sun</option>
-    </select>
+  <!-- Controls card -->
+  <div class="card" id="controlsCard">
+    <div class="card-header">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 015 19"/><path d="M4.93 4.93A10 10 0 0119 19"/></svg>
+      <span class="card-label">Controls</span>
+    </div>
+    <div class="controls-row">
+      <div class="controls-group">
+        <div class="field-wrap">
+          <span class="field-label">Day</span>
+          <select id="daySelect">
+            <option>Mon</option><option>Tue</option><option>Wed</option>
+            <option>Thu</option><option>Fri</option><option>Sat</option><option>Sun</option>
+          </select>
+        </div>
+        <div class="field-wrap">
+          <span class="field-label">Date</span>
+          <input type="date" id="scheduleDate" title="Date shown in print header">
+        </div>
+      </div>
+      <div class="controls-actions">
+        <button class="btn btn-primary" onclick="generateSchedule()" id="generateBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 3 19 12 5 21 5 3"/></svg>
+          Generate
+        </button>
+        <button class="btn btn-ghost" onclick="clearTable()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          Clear
+        </button>
+        <button class="btn btn-icon" onclick="exportExcel()" title="Export to Excel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Export
+        </button>
+        <button class="btn btn-icon" onclick="printPage()" title="Print schedule">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print
+        </button>
+      </div>
+    </div>
 
-    <button onclick="generateSchedule()">Generate</button>
-    <button onclick="clearTable()" class="clear">Clear</button>
-    <button onclick="exportExcel()">Export</button>
-    <button onclick="printPage()">Print</button>
+    <div class="status-bar" id="generateStatus">
+      <div class="status-pill" id="generateStatusPill"></div>
+    </div>
   </div>
-</div>
 
-<div class="card" id="printArea">
-  <h3 id="printTitle">Generated Schedule</h3>
-  <table id="table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Start</th>
-        <th>End</th>
-        <th>Break 30</th>
-        <th>Break 15</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+  <!-- Schedule table card -->
+  <div class="card" id="printArea" style="padding:20px;">
+    <div id="printTitle">Generated Schedule</div>
+
+    <div id="emptyState" class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <p>Upload a PDF and generate a schedule to see shifts here.</p>
+    </div>
+
+    <div class="table-wrapper" id="tableWrapper" style="display:none;">
+      <table id="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Break 30</th>
+            <th>Break 15</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
 
 </div>
 
 <script>
-
 let currentData = [];
-let currentSessionId = null;
+let currentSessionId = sessionStorage.getItem("scheduleSessionId") || null;
 
-function setStatus(message, type = "") {
-  const status = document.getElementById("statusMessage");
-  status.textContent = message;
-  status.className = `status ${type}`;
+// ── Status helpers ──────────────────────────────────────────────────────────
+function setStatus(barId, pillId, message, type, loading = false) {
+  const bar  = document.getElementById(barId);
+  const pill = document.getElementById(pillId);
+  if (!message) {
+    bar.classList.remove("visible");
+    return;
+  }
+  pill.className = `status-pill ${type}`;
+  pill.innerHTML = loading
+    ? `<span class="spinner"></span>${message}`
+    : `${_statusIcon(type)}${message}`;
+  bar.classList.add("visible");
 }
 
-// =======================
-// UPLOAD
-// =======================
+function _statusIcon(type) {
+  if (type === "success") return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  if (type === "error")   return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+}
+
+// ── File chosen callback ────────────────────────────────────────────────────
+function onFileChosen(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const fnEl = document.getElementById("uploadFilename");
+  document.getElementById("uploadFilenameText").textContent = file.name;
+  fnEl.style.display = "inline-flex";
+}
+
+// drag-over highlight
+const zone = document.getElementById("uploadZone");
+zone.addEventListener("dragover",  e => { e.preventDefault(); zone.classList.add("drag-over"); });
+zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+zone.addEventListener("drop",      e => {
+  e.preventDefault();
+  zone.classList.remove("drag-over");
+  const f = e.dataTransfer.files[0];
+  if (f) {
+    document.getElementById("fileInput").files = e.dataTransfer.files;
+    onFileChosen({ target: { files: [f] } });
+  }
+});
+
+// ── Upload ──────────────────────────────────────────────────────────────────
 async function uploadFile() {
   const file = document.getElementById("fileInput").files[0];
+  if (!file) { setStatus("uploadStatus","uploadStatusPill","Select a PDF file first.","error"); return; }
 
-  if (!file) return alert("Select a file");
+  const btn = document.getElementById("uploadBtn");
+  btn.disabled = true;
+  setStatus("uploadStatus","uploadStatusPill","Reading schedule…","info",true);
 
   const formData = new FormData();
   formData.append("file", file);
 
-  const btn = document.getElementById("uploadBtn");
-  const originalText = btn.innerText;
-  btn.innerText = "Uploading...";
-  btn.disabled = true;
-  setStatus("Uploading and reading schedule...");
-
   try {
-    const res = await fetch("/upload", {
-      method: "POST",
-      body: formData
-    });
-
-    if (!res.ok) {
-      const message = await res.text();
-      throw new Error(message || "Upload failed.");
-    }
-
+    const res = await fetch("/upload", { method:"POST", body: formData });
+    if (!res.ok) throw new Error(await res.text() || "Upload failed.");
     const result = await res.json();
-    if (result.success) {
-      currentSessionId = result.sessionId;
-      currentData = [];
-      clearTable();
-      setStatus(`Upload done. ${result.count} shifts extracted.`, "success");
-    } else {
-      throw new Error("Error uploading file.");
-    }
+    if (!result.success) throw new Error("Error processing file.");
+    currentSessionId = result.sessionId;
+    sessionStorage.setItem("scheduleSessionId", currentSessionId);
+    currentData = [];
+    clearTable();
+    setStatus("uploadStatus","uploadStatusPill",`Done — ${result.count} shifts extracted.`,"success");
   } catch (err) {
-    setStatus(err.message || "Error connecting to server.", "error");
+    setStatus("uploadStatus","uploadStatusPill", err.message || "Connection error.","error");
   } finally {
-    btn.innerText = originalText;
     btn.disabled = false;
   }
 }
 
-// =======================
-// GENERATE
-// =======================
+// ── Generate ────────────────────────────────────────────────────────────────
 async function generateSchedule() {
   if (!currentSessionId) {
-    setStatus("Upload a schedule file before generating.", "error");
+    setStatus("generateStatus","generateStatusPill","Upload a schedule file first.","error");
     return;
   }
 
   const day = document.getElementById("daySelect").value;
+  const btn = document.getElementById("generateBtn");
+  btn.disabled = true;
+  setStatus("generateStatus","generateStatusPill","Generating…","info",true);
 
   try {
     const res = await fetch("/generate", {
@@ -300,29 +804,47 @@ async function generateSchedule() {
 
     if (!res.ok) {
       const message = await res.text();
+      if (res.status === 404) { currentSessionId = null; sessionStorage.removeItem("scheduleSessionId"); }
       throw new Error(message || "Could not generate schedule.");
     }
 
     const data = await res.json();
     currentData = data;
-
     renderTable(data);
-    setStatus(`${data.length} shifts found for ${day}.`, "success");
+    setStatus("generateStatus","generateStatusPill",`${data.length} shift${data.length === 1 ? "" : "s"} found for ${day}.`,"success");
   } catch (err) {
-    setStatus(err.message || "Error generating schedule.", "error");
+    setStatus("generateStatus","generateStatusPill", err.message || "Error generating schedule.","error");
+  } finally {
+    btn.disabled = false;
   }
 }
 
-// =======================
+// ── Render ──────────────────────────────────────────────────────────────────
 function renderTable(data) {
   const tbody = document.querySelector("#table tbody");
   tbody.innerHTML = "";
-  document.getElementById("printTitle").textContent =
-    `${document.getElementById("daySelect").value} Schedule`;
+
+  const day     = document.getElementById("daySelect").value;
+  const dateVal = document.getElementById("scheduleDate").value;
+  const dateLabel = dateVal
+    ? ` — ${new Date(dateVal + "T00:00:00").toLocaleDateString("en-US", { weekday:"long", year:"numeric", month:"long", day:"numeric" })}`
+    : "";
+  document.getElementById("printTitle").textContent = `${day} Schedule${dateLabel}`;
+
+  const empty  = document.getElementById("emptyState");
+  const wrapper = document.getElementById("tableWrapper");
+
+  if (!data.length) {
+    empty.style.display = "";
+    wrapper.style.display = "none";
+    return;
+  }
+
+  empty.style.display = "none";
+  wrapper.style.display = "";
 
   data.forEach(row => {
     const tr = document.createElement("tr");
-
     tr.innerHTML = `
       <td>${row.name}</td>
       <td contenteditable>${row.start}</td>
@@ -330,44 +852,37 @@ function renderTable(data) {
       <td><input type="checkbox"></td>
       <td><input type="checkbox"></td>
     `;
-
     tbody.appendChild(tr);
   });
 }
 
-// =======================
-// CLEAR
-// =======================
+// ── Clear ───────────────────────────────────────────────────────────────────
 function clearTable() {
   document.querySelector("#table tbody").innerHTML = "";
   currentData = [];
   document.getElementById("printTitle").textContent = "Generated Schedule";
+  document.getElementById("emptyState").style.display = "";
+  document.getElementById("tableWrapper").style.display = "none";
+  setStatus("generateStatus","generateStatusPill","","");
 }
 
 function getTableData() {
   return Array.from(document.querySelectorAll("#table tbody tr")).map(row => {
     const cells = row.querySelectorAll("td");
-
     return {
-      name: cells[0].textContent.trim(),
-      start: cells[1].textContent.trim(),
-      end: cells[2].textContent.trim(),
+      name:    cells[0].textContent.trim(),
+      start:   cells[1].textContent.trim(),
+      end:     cells[2].textContent.trim(),
       break30: cells[3].querySelector("input").checked ? "Yes" : "",
       break15: cells[4].querySelector("input").checked ? "Yes" : ""
     };
   });
 }
 
-// =======================
-// EXPORT
-// =======================
+// ── Export ──────────────────────────────────────────────────────────────────
 async function exportExcel() {
   const tableData = getTableData();
-
-  if (!tableData.length) {
-    setStatus("Generate a schedule before exporting.", "error");
-    return;
-  }
+  if (!tableData.length) { setStatus("generateStatus","generateStatusPill","Generate a schedule before exporting.","error"); return; }
 
   try {
     const res = await fetch("/export", {
@@ -375,61 +890,47 @@ async function exportExcel() {
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ data: tableData })
     });
-
-    if (!res.ok) {
-      const message = await res.text();
-      throw new Error(message || "Could not export schedule.");
-    }
-
+    if (!res.ok) throw new Error(await res.text() || "Export failed.");
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "schedule.xlsx";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = "schedule.xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
-    setStatus("Excel file created.", "success");
+    setStatus("generateStatus","generateStatusPill","Excel file downloaded.","success");
   } catch (err) {
-    setStatus(err.message || "Error exporting schedule.", "error");
+    setStatus("generateStatus","generateStatusPill", err.message || "Export error.","error");
   }
 }
 
-// =======================
+// ── Print ───────────────────────────────────────────────────────────────────
 function printPage() {
-  if (!getTableData().length) {
-    setStatus("Generate a schedule before printing.", "error");
-    return;
-  }
-
+  if (!getTableData().length) { setStatus("generateStatus","generateStatusPill","Generate a schedule before printing.","error"); return; }
   window.print();
 }
 
-// =======================
-// DARK MODE
-// =======================
+// ── Dark mode ───────────────────────────────────────────────────────────────
 function toggleDark() {
   document.body.classList.toggle("dark");
+  localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+  updateDarkIcon();
+}
 
+function updateDarkIcon() {
   const isDark = document.body.classList.contains("dark");
-  localStorage.setItem("darkMode", isDark);
+  document.getElementById("darkIcon").innerHTML = isDark
+    ? `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`
+    : `<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>`;
 }
 
 (function () {
-  const saved = localStorage.getItem("darkMode");
-  if (saved === "true") {
+  if (localStorage.getItem("darkMode") === "true") {
     document.body.classList.add("dark");
+    updateDarkIcon();
   }
 })();
 
-// =======================
-function goHome() {
-  window.location.href = "/";
-}
-
+function goHome() { window.location.href = "/"; }
 </script>
-
 </body>
 </html>
