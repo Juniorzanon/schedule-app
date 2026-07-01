@@ -11,24 +11,65 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --blue:        #3b6edc;
-      --blue-dark:   #2d57b5;
+      --blue:        #3658d8;
+      --blue-dark:   #253da4;
       --blue-light:  #eef3ff;
-      --bg:          #f8fafc;
+      --teal:        #0f9f8c;
+      --amber:       #f5a524;
+      --rose:        #e25563;
+      --bg:          #f6f8fb;
       --surface:     #ffffff;
-      --border:      #e2e8f0;
+      --surface-soft:#f9fbff;
+      --border:      #d9e1ee;
       --text:        #0f172a;
       --muted:       #64748b;
       --radius-sm:   6px;
-      --radius-md:   10px;
-      --radius-lg:   16px;
+      --radius-md:   8px;
+      --radius-lg:   8px;
+      --shadow:      0 18px 50px rgba(15, 23, 42, .10);
     }
 
     body {
       font-family: 'Inter', 'Segoe UI', sans-serif;
-      background: var(--bg);
+      background:
+        linear-gradient(180deg, rgba(238, 243, 255, .92) 0%, rgba(246, 248, 251, .98) 44%, #ffffff 100%);
       color: var(--text);
       min-height: 100vh;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes floatPreview {
+      0%, 100% {
+        transform: perspective(1200px) rotateX(6deg) translateY(0);
+      }
+      50% {
+        transform: perspective(1200px) rotateX(6deg) translateY(-12px);
+      }
+    }
+
+    @keyframes shimmer {
+      0% {
+        opacity: .52;
+        transform: scaleX(.92);
+      }
+      50% {
+        opacity: 1;
+        transform: scaleX(1);
+      }
+      100% {
+        opacity: .52;
+        transform: scaleX(.92);
+      }
     }
 
     /* ── Topbar ── */
@@ -37,12 +78,14 @@
       justify-content: space-between;
       align-items: center;
       padding: 0 40px;
-      height: 64px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
+      min-height: 70px;
+      background: rgba(255,255,255,.84);
+      border-bottom: 1px solid rgba(217,225,238,.82);
+      backdrop-filter: blur(18px);
       position: sticky;
       top: 0;
       z-index: 10;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, .04);
     }
 
     .logo {
@@ -52,31 +95,35 @@
       text-decoration: none;
     }
 
-    .logo-text { display: flex; flex-direction: column; gap: 1px; }
+    .logo-text { display: flex; flex-direction: column; gap: 2px; }
 
     .logo-name {
       font-weight: 700;
-      font-size: 16px;
+      font-size: 15px;
       color: var(--text);
-      line-height: 1.1;
+      line-height: 1;
+      letter-spacing: -.01em;
     }
 
     .logo-by {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--muted);
-      font-weight: 400;
+      font-weight: 500;
+      letter-spacing: .04em;
+      text-transform: uppercase;
       line-height: 1;
     }
 
     .logo-icon {
       width: 32px;
       height: 32px;
-      background: var(--blue);
+      background: linear-gradient(135deg, var(--blue), var(--teal));
       border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      box-shadow: 0 8px 18px rgba(54, 88, 216, .22);
     }
 
     .logo-icon svg { width: 18px; height: 18px; }
@@ -87,45 +134,168 @@
       gap: 7px;
       padding: 9px 18px;
       border-radius: var(--radius-sm);
-      border: none;
+      border: 1px solid transparent;
       font-family: inherit;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 700;
       cursor: pointer;
-      transition: background .15s, transform .1s;
+      transition: background .15s, transform .1s, box-shadow .15s, border-color .15s;
       text-decoration: none;
     }
 
     .btn:active { transform: scale(.97); }
+    .btn:hover { transform: translateY(-1px); }
 
     .btn-primary {
-      background: var(--blue);
+      background: linear-gradient(135deg, var(--blue), #4a78f0);
       color: white;
+      box-shadow: 0 10px 24px rgba(54, 88, 216, .22);
     }
 
-    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, var(--blue-dark), var(--blue));
+      box-shadow: 0 14px 30px rgba(54, 88, 216, .28);
+    }
 
     .btn-outline {
-      background: transparent;
+      background: rgba(255,255,255,.74);
       color: var(--text);
       border: 1px solid var(--border);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, .05);
     }
 
     .btn-outline:hover { background: var(--bg); }
 
     /* ── Hero ── */
     .hero {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 96px 24px 80px;
+      position: relative;
+      min-height: calc(100vh - 70px);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      padding: 92px 24px 76px;
       text-align: center;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(246,248,251,.38), rgba(246,248,251,.96) 76%),
+        repeating-linear-gradient(90deg, rgba(54,88,216,.08) 0 1px, transparent 1px 104px),
+        repeating-linear-gradient(0deg, rgba(15,159,140,.07) 0 1px, transparent 1px 88px);
+      opacity: .8;
+    }
+
+    .hero-preview {
+      position: absolute;
+      inset: 54px max(26px, 8vw) auto;
+      height: min(520px, 62vh);
+      pointer-events: none;
+      opacity: .42;
+      transform: perspective(1200px) rotateX(6deg);
+      animation: floatPreview 8s ease-in-out infinite;
+    }
+
+    .preview-window {
+      width: min(1040px, 100%);
+      margin: 0 auto;
+      background: rgba(255,255,255,.9);
+      border: 1px solid rgba(217,225,238,.88);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .preview-toolbar {
+      height: 46px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 18px;
+      background: linear-gradient(180deg, #ffffff, #f4f7fc);
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .preview-toolbar span {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--rose);
+    }
+
+    .preview-toolbar span:nth-child(2) { background: var(--amber); }
+    .preview-toolbar span:nth-child(3) { background: var(--teal); margin-right: 8px; }
+
+    .preview-grid { padding: 18px; }
+
+    .preview-row {
+      display: grid;
+      grid-template-columns: 1.5fr .62fr .62fr .55fr .55fr;
+      gap: 10px;
+      align-items: center;
+      min-height: 44px;
+      border-bottom: 1px solid #edf2f7;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .preview-row:last-child { border-bottom: 0; }
+
+    .preview-row.head {
+      min-height: 34px;
+      color: white;
+      background: linear-gradient(135deg, var(--blue), var(--teal));
+      border-radius: 6px;
+      border: 0;
+      padding: 0 12px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .preview-row:not(.head) span {
+      min-width: 0;
+      height: 14px;
+      border-radius: 999px;
+      background: #dbe7fb;
+      transform-origin: left center;
+      animation: shimmer 3.2s ease-in-out infinite;
+    }
+
+    .preview-row:nth-child(3) span { animation-delay: .18s; }
+    .preview-row:nth-child(4) span { animation-delay: .36s; }
+    .preview-row:nth-child(5) span { animation-delay: .54s; }
+    .preview-row:nth-child(6) span { animation-delay: .72s; }
+
+    .preview-row:not(.head) span:first-child { width: 74%; background: #c9d8f8; }
+    .preview-row:not(.head) span:nth-child(2),
+    .preview-row:not(.head) span:nth-child(3) { width: 58%; background: #d8f1ec; }
+    .preview-row:not(.head) span:nth-child(4),
+    .preview-row:not(.head) span:nth-child(5) { width: 22px; height: 22px; border-radius: 6px; background: #fee8b7; }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      width: min(760px, 100%);
+      margin: 0 auto;
+      padding-top: 36px;
+      animation: fadeInUp .62s ease both;
     }
 
     .badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: var(--blue-light);
+      background: rgba(255,255,255,.86);
       color: var(--blue);
       font-size: 12px;
       font-weight: 600;
@@ -134,19 +304,25 @@
       padding: 5px 12px;
       border-radius: 20px;
       margin-bottom: 24px;
+      border: 1px solid rgba(217,225,238,.82);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, .06);
+      animation: fadeInUp .48s ease both;
     }
 
     .hero h1 {
-      font-size: 52px;
+      font-size: clamp(42px, 6vw, 74px);
       font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: -.02em;
+      line-height: 1.02;
+      letter-spacing: 0;
       margin-bottom: 20px;
       color: var(--text);
     }
 
     .hero h1 span {
-      color: var(--blue);
+      color: transparent;
+      background: linear-gradient(135deg, var(--blue), var(--teal));
+      -webkit-background-clip: text;
+      background-clip: text;
     }
 
     .hero p {
@@ -162,6 +338,7 @@
       gap: 12px;
       justify-content: center;
       flex-wrap: wrap;
+      animation: fadeInUp .58s ease .12s both;
     }
 
     .btn-lg {
@@ -170,11 +347,52 @@
       border-radius: var(--radius-md);
     }
 
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 28px;
+      animation: fadeInUp .58s ease .2s both;
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border: 1px solid rgba(217,225,238,.9);
+      border-radius: 999px;
+      background: rgba(255,255,255,.74);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
+    }
+
+    .stat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--teal);
+      box-shadow: 0 0 0 4px rgba(15,159,140,.12);
+    }
+
+    .stat-pill:nth-child(2) .stat-dot {
+      background: var(--amber);
+      box-shadow: 0 0 0 4px rgba(245,165,36,.16);
+    }
+
+    .stat-pill:nth-child(3) .stat-dot {
+      background: var(--rose);
+      box-shadow: 0 0 0 4px rgba(226,85,99,.14);
+    }
+
     /* ── Features ── */
     .section {
       max-width: 1040px;
       margin: 0 auto;
-      padding: 0 24px 100px;
+      padding: 22px 24px 100px;
     }
 
     .section-label {
@@ -206,18 +424,27 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 28px 24px;
-      transition: box-shadow .2s, transform .2s;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, .05);
+      transition: box-shadow .2s, transform .2s, border-color .2s;
+      animation: fadeInUp .5s ease both;
     }
 
+    .feature-card:nth-child(2) { animation-delay: .05s; }
+    .feature-card:nth-child(3) { animation-delay: .1s; }
+    .feature-card:nth-child(4) { animation-delay: .15s; }
+    .feature-card:nth-child(5) { animation-delay: .2s; }
+    .feature-card:nth-child(6) { animation-delay: .25s; }
+
     .feature-card:hover {
-      box-shadow: 0 8px 30px rgba(59,110,220,.08);
+      border-color: rgba(54,88,216,.28);
+      box-shadow: 0 18px 42px rgba(15, 23, 42, .10);
       transform: translateY(-2px);
     }
 
     .feature-icon {
       width: 44px;
       height: 44px;
-      background: var(--blue-light);
+      background: #eef3ff;
       border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
@@ -230,6 +457,15 @@
       height: 22px;
       stroke: var(--blue);
     }
+
+    .feature-card:nth-child(2) .feature-icon { background: #e8f7f3; }
+    .feature-card:nth-child(2) .feature-icon svg { stroke: var(--teal); }
+    .feature-card:nth-child(3) .feature-icon { background: #fff2d8; }
+    .feature-card:nth-child(3) .feature-icon svg { stroke: #c27803; }
+    .feature-card:nth-child(4) .feature-icon { background: #ffecef; }
+    .feature-card:nth-child(4) .feature-icon svg { stroke: var(--rose); }
+    .feature-card:nth-child(5) .feature-icon { background: #e8f7f3; }
+    .feature-card:nth-child(5) .feature-icon svg { stroke: var(--teal); }
 
     .feature-card h3 {
       font-size: 16px;
@@ -245,7 +481,9 @@
 
     /* ── CTA band ── */
     .cta-band {
-      background: var(--blue);
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, .94), rgba(37, 61, 164, .94)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.1) 0 1px, transparent 1px 84px);
       padding: 60px 24px;
       text-align: center;
       margin-bottom: 0;
@@ -267,6 +505,7 @@
     .btn-white {
       background: white;
       color: var(--blue);
+      box-shadow: none;
     }
 
     .btn-white:hover { background: #f0f4ff; }
@@ -280,6 +519,65 @@
       border-top: 1px solid var(--border);
       background: var(--surface);
     }
+
+    @media (max-width: 720px) {
+      .topbar {
+        padding: 0 18px;
+        min-height: 64px;
+      }
+
+      .topbar .btn {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+
+      .logo-icon { width: 30px; height: 30px; }
+
+      .hero {
+        min-height: auto;
+        padding: 74px 18px 58px;
+      }
+
+      .hero-preview {
+        inset: 34px 12px auto;
+        height: 420px;
+        opacity: .28;
+      }
+
+      .preview-row {
+        grid-template-columns: 1.4fr .7fr .7fr;
+      }
+
+      .preview-row span:nth-child(4),
+      .preview-row span:nth-child(5),
+      .preview-row.head span:nth-child(4),
+      .preview-row.head span:nth-child(5) {
+        display: none;
+      }
+
+      .hero p {
+        font-size: 16px;
+        line-height: 1.65;
+      }
+
+      .btn-lg {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .section-title { font-size: 27px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -291,33 +589,55 @@
         <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
       </svg>
     </div>
-    <div class="logo-text">
-      <span class="logo-name">Online Schedule</span>
-      <span class="logo-by">by Júnior Zanon</span>
-    </div>
+    <span class="logo-name">Online Schedule</span>
   </a>
   <a href="dashboard.html" class="btn btn-primary">Open Dashboard</a>
 </nav>
 
 <section class="hero">
-  <div class="badge">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-    PDF to Schedule in seconds
+  <div class="hero-preview" aria-hidden="true">
+    <div class="preview-window">
+      <div class="preview-toolbar">
+        <span></span><span></span><span></span>
+        Weekly rota
+      </div>
+      <div class="preview-grid">
+        <div class="preview-row head">
+          <span>Name</span><span>Start</span><span>End</span><span>Break 30</span><span>Break 15</span>
+        </div>
+        <div class="preview-row"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="preview-row"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="preview-row"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="preview-row"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="preview-row"><span></span><span></span><span></span><span></span><span></span></div>
+      </div>
+    </div>
   </div>
-  <h1>Shift Schedules<br><span>Made Simple</span></h1>
-  <p>Upload your PDF roster, filter by day, edit on the fly, then print or export to Excel in one click.</p>
-  <div class="hero-actions">
-    <a href="dashboard.html" class="btn btn-primary btn-lg">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      Upload Schedule
-    </a>
-    <a href="dashboard.html" class="btn btn-outline btn-lg">View Dashboard</a>
+  <div class="hero-content">
+    <div class="badge">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      PDF to Schedule in seconds
+    </div>
+    <h1>Shift Schedules<br><span>Made Simple</span></h1>
+    <p>Upload your PDF roster, filter by day, edit on the fly, then print or export to Excel in one click.</p>
+    <div class="hero-actions">
+      <a href="dashboard.html" class="btn btn-primary btn-lg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Schedule
+      </a>
+      <a href="dashboard.html" class="btn btn-outline btn-lg">View Dashboard</a>
+    </div>
+    <div class="hero-stats" aria-label="Schedule workflow">
+      <span class="stat-pill"><span class="stat-dot"></span>Upload PDF</span>
+      <span class="stat-pill"><span class="stat-dot"></span>Filter by day</span>
+      <span class="stat-pill"><span class="stat-dot"></span>Export or print</span>
+    </div>
   </div>
 </section>
 
 <div class="section">
-  <p class="section-label">Why use it</p>
-  <h2 class="section-title">Everything you need, nothing you don't</h2>
+  <p class="section-label">Features</p>
+  <h2 class="section-title">From PDF to printed schedule in seconds</h2>
 
   <div class="features-grid">
     <div class="feature-card">
@@ -377,7 +697,7 @@
 </div>
 
 <footer>
-  Online Schedule &copy; 2026
+  Built by <strong>Júnior Zanon</strong> &mdash; Online Schedule &copy; 2026
 </footer>
 
 </body>
