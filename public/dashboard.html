@@ -840,7 +840,7 @@ input[type="checkbox"]:checked::after {
 
 /* ── Print ── */
 @media print {
-  @page { size: A4 landscape; margin: 6mm 8mm; }
+  @page { size: A4 portrait; margin: 10mm 8mm; }
 
   html, body { background: white; color: #000; margin: 0; padding: 0; }
 
@@ -877,16 +877,16 @@ input[type="checkbox"]:checked::after {
   }
 
   #printTitle {
-    width: 780px;
+    width: 100%;
     max-width: 100%;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: bold;
-    margin: 0 auto 4px;
+    margin: 0 auto 6px;
     text-align: center;
   }
 
   .table-wrapper {
-    width: 780px;
+    width: 100%;
     max-width: 100%;
     border: none;
     border-radius: 0;
@@ -901,9 +901,9 @@ input[type="checkbox"]:checked::after {
     line-height: 1.12;
   }
 
-  .name-col { width: 430px; }
-  .time-col { width: 70px; }
-  .break-col { width: 105px; }
+  .name-col { width: 44%; }
+  .time-col { width: 11%; }
+  .break-col { width: 17%; }
 
   .move-col,
   .row-actions-column,
@@ -928,13 +928,22 @@ input[type="checkbox"]:checked::after {
 
   td {
     border: 1px solid #cfcfcf;
-    padding: 2px 6px;
+    padding: 3px 6px;
     font-size: 12px;
     background: white !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1.12;
+    line-height: 1.15;
+  }
+
+  /* Name column: allow wrapping so long names are never cut off */
+  td.name-col,
+  td:nth-child(1) {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
   }
 
   th:nth-child(4),
