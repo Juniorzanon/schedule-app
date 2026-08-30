@@ -532,8 +532,8 @@ table {
   table-layout: fixed;
 }
 
-.role-col { width: 9%; }
-.name-col { width: 32%; }
+.role-col { width: 12%; }
+.name-col { width: 29%; }
 .time-col { width: 10%; }
 .break-col { width: 12%; }
 .move-col { width: 15%; }
@@ -595,7 +595,7 @@ td:nth-child(6),
 
 .role-select {
   width: 100%;
-  min-width: 72px;
+  min-width: 84px;
   padding: 6px 6px;
   font-size: 12.5px;
   font-weight: 600;
@@ -927,8 +927,8 @@ input[type="checkbox"]:checked::after {
     line-height: 1.12;
   }
 
-  .role-col { width: 8%; }
-  .name-col { width: 40%; }
+  .role-col { width: 12%; }
+  .name-col { width: 36%; }
   .time-col { width: 10%; }
   .break-col { width: 16%; }
 
@@ -985,16 +985,15 @@ input[type="checkbox"]:checked::after {
     text-align: center;
   }
 
-  /* Excel-like grid with zebra striping, black text */
+  /* All rows white with separated grid lines, black text (no zebra) */
   tbody tr td {
+    background: #ffffff !important;
     color: #000 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  tbody tr:nth-child(odd) td  { background: #ffffff !important; }
-  tbody tr:nth-child(even) td { background: #eef2fb !important; }
 
-  /* A Shift Manager (SH) row overrides the zebra with a solid grey highlight */
+  /* A Shift row overrides white with a solid grey highlight */
   tbody tr.role-sh td {
     background: #cfcfcf !important;
     color: #000 !important;
@@ -1400,7 +1399,8 @@ function createCheckboxCell(checked = false) {
   return td;
 }
 
-const ROLE_OPTIONS = ["", "SH", "Admin", "CL"];
+const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office"];
+const ROLE_HIGHLIGHT = "Shift";   // role whose whole row is highlighted grey
 
 function createRoleCell(role = "") {
   const td = document.createElement("td");
@@ -1425,7 +1425,7 @@ function applyRole(td) {
   const value = select ? select.value : "";
   td.dataset.role = value;                 // used by print CSS to show the label
   const tr = td.closest("tr");
-  if (tr) tr.classList.toggle("role-sh", value === "SH");
+  if (tr) tr.classList.toggle("role-sh", value === ROLE_HIGHLIGHT);
 }
 
 function createScheduleRow(row = {}) {
