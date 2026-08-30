@@ -107,6 +107,7 @@ app.post("/export", async (req, res) => {
   const sheet = workbook.addWorksheet("Schedule");
 
   sheet.columns = [
+    { header: "Role", key: "role", width: 10 },
     { header: "Name", key: "name", width: 30 },
     { header: "Start", key: "start", width: 15 },
     { header: "End", key: "end", width: 15 },
@@ -115,13 +116,20 @@ app.post("/export", async (req, res) => {
   ];
 
   data.forEach(row => {
-    sheet.addRow({
+    const added = sheet.addRow({
+      role: row.role || "",
       name: row.name,
       start: row.start,
       end: row.end,
       break30: row.break30 || "",
       break15: row.break15 || ""
     });
+    // Highlight Shift Manager rows in grey to match the printout
+    if ((row.role || "") === "SH") {
+      added.eachCell(cell => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFCFCFCF" } };
+      });
+    }
   });
 
   try {
