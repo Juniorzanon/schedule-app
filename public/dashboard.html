@@ -532,8 +532,8 @@ table {
   table-layout: fixed;
 }
 
-.role-col { width: 12%; }
-.name-col { width: 29%; }
+.role-col { width: 14%; }
+.name-col { width: 27%; }
 .time-col { width: 10%; }
 .break-col { width: 12%; }
 .move-col { width: 15%; }
@@ -595,7 +595,7 @@ td:nth-child(6),
 
 .role-select {
   width: 100%;
-  min-width: 84px;
+  min-width: 96px;
   padding: 6px 6px;
   font-size: 12.5px;
   font-weight: 600;
@@ -927,8 +927,8 @@ input[type="checkbox"]:checked::after {
     line-height: 1.12;
   }
 
-  .role-col { width: 12%; }
-  .name-col { width: 36%; }
+  .role-col { width: 14%; }
+  .name-col { width: 34%; }
   .time-col { width: 10%; }
   .break-col { width: 16%; }
 
@@ -1399,7 +1399,7 @@ function createCheckboxCell(checked = false) {
   return td;
 }
 
-const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office"];
+const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule"];
 const ROLE_HIGHLIGHT = "Shift";   // role whose whole row is highlighted grey
 
 function createRoleCell(role = "") {
