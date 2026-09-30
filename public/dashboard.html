@@ -615,6 +615,28 @@ tbody tr.role-sh td { background: #d9d9d9 !important; }
 tbody tr.role-sh td[contenteditable] { background: #cfcfcf !important; }
 .dark tbody tr.role-sh td[contenteditable] { background: #454b54 !important; }
 
+/* Sick — highlight the whole row in soft red */
+tbody tr.role-sick td { background: #f7d5d5 !important; }
+.dark tbody tr.role-sick td { background: #52302f !important; }
+tbody tr.role-sick td[contenteditable] { background: #f3c9c9 !important; }
+.dark tbody tr.role-sick td[contenteditable] { background: #5e3735 !important; }
+
+/* Obs button count badge */
+.obs-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  margin-left: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: #d84a4a;
+  border-radius: 9px;
+}
+
 .row-actions-column,
 .row-actions-cell {
   width: 150px;
@@ -948,6 +970,55 @@ body.ipad-open { overflow: hidden; }
 .ipad-table td:nth-child(5), .ipad-table td:nth-child(6) { text-align: center; }
 
 .ipad-table tr.role-sh td { background: #cfcfcf !important; }
+.ipad-table tr.role-sick td { background: #f7d5d5 !important; }
+
+/* ── Observations modal ── */
+.obs-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(20, 28, 46, .45);
+  padding: 24px;
+  overflow: auto;
+}
+.obs-overlay.open { display: flex; align-items: flex-start; justify-content: center; }
+.obs-card {
+  width: 100%;
+  max-width: 560px;
+  margin-top: 8vh;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  padding: 20px 22px 18px;
+}
+.obs-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.obs-head-title { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; }
+.obs-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border: none; border-radius: 8px;
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.obs-x:hover { background: var(--bg); color: var(--text); }
+.obs-hint { font-size: 12.5px; color: var(--muted); margin: 2px 0 12px; }
+#obsText {
+  width: 100%;
+  min-height: 200px;
+  resize: vertical;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+}
+#obsText:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,110,220,.15); }
+.obs-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 
 .ipad-check {
   display: inline-block;
@@ -1106,6 +1177,12 @@ body.ipad-open { overflow: hidden; }
     color: #000 !important;
   }
 
+  /* A Sick row overrides white with a soft red highlight */
+  tbody tr.role-sick td {
+    background: #f2c4c4 !important;
+    color: #000 !important;
+  }
+
   /* Hide the role dropdown in print; show its value as plain text */
   .role-select { display: none !important; }
   .role-cell::after {
@@ -1252,6 +1329,12 @@ body.ipad-open { overflow: hidden; }
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
           iPad
         </button>
+        <!-- Observations: Admin-only (revealed by initAuth) -->
+        <button id="obsBtn" class="btn btn-icon" onclick="openObs()" title="Observations" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Obs
+          <span id="obsCount" class="obs-count" style="display:none">0</span>
+        </button>
       </div>
     </div>
 
@@ -1324,6 +1407,26 @@ body.ipad-open { overflow: hidden; }
       </thead>
       <tbody></tbody>
     </table>
+  </div>
+</div>
+
+<!-- Observations modal (Admin-only) -->
+<div id="obsMode" class="obs-overlay" aria-hidden="true">
+  <div class="obs-card">
+    <div class="obs-head">
+      <div class="obs-head-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span>Observations</span>
+      </div>
+      <button class="obs-x" onclick="closeObs()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <p class="obs-hint">Staff notes — late arrivals, sick, etc. Sick entries are added automatically.</p>
+    <textarea id="obsText" placeholder="e.g. Junior Zanon arrived 20 min late"></textarea>
+    <div class="obs-actions">
+      <button class="btn btn-primary" onclick="closeObs()">Done</button>
+    </div>
   </div>
 </div>
 
@@ -1540,23 +1643,42 @@ function createCheckboxCell(checked = false) {
 
 const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule", "Beef"];
 const ROLE_HIGHLIGHT = "Shift";   // role whose whole row is highlighted grey
+const ROLE_SICK = "Sick";         // Admin-only role: row turns soft red + auto-fills Observations
+
+// "Sick" only exists for the Admin login (feature in testing)
+function getRoleOptions() {
+  return isAdmin ? ROLE_OPTIONS.concat([ROLE_SICK]) : ROLE_OPTIONS.slice();
+}
 
 function createRoleCell(role = "") {
   const td = document.createElement("td");
   td.className = "role-cell";
   const select = document.createElement("select");
   select.className = "role-select";
-  ROLE_OPTIONS.forEach(value => {
+  getRoleOptions().forEach(value => {
     const opt = document.createElement("option");
     opt.value = value;
     opt.textContent = value === "" ? "—" : value;
     select.appendChild(opt);
   });
-  select.value = ROLE_OPTIONS.includes(role) ? role : "";
-  select.addEventListener("change", () => applyRole(td));
+  select.value = getRoleOptions().includes(role) ? role : "";
+  select.addEventListener("change", () => { applyRole(td); handleSickObs(td); });
   td.appendChild(select);
   applyRole(td);
   return td;
+}
+
+// Adds the Sick option to existing role selects once Admin is confirmed
+function refreshRoleOptions() {
+  if (!isAdmin) return;
+  document.querySelectorAll(".role-select").forEach(sel => {
+    if (![...sel.options].some(o => o.value === ROLE_SICK)) {
+      const opt = document.createElement("option");
+      opt.value = ROLE_SICK;
+      opt.textContent = ROLE_SICK;
+      sel.appendChild(opt);
+    }
+  });
 }
 
 function applyRole(td) {
@@ -1564,7 +1686,73 @@ function applyRole(td) {
   const value = select ? select.value : "";
   td.dataset.role = value;                 // used by print CSS to show the label
   const tr = td.closest("tr");
-  if (tr) tr.classList.toggle("role-sh", value === ROLE_HIGHLIGHT);
+  if (tr) {
+    tr.classList.toggle("role-sh", value === ROLE_HIGHLIGHT);
+    tr.classList.toggle("role-sick", value === ROLE_SICK);
+  }
+}
+
+// ── Observations: auto-fill when a person is marked Sick ─────────────────────
+function handleSickObs(td) {
+  const tr = td.closest("tr");
+  if (!tr) return;
+  const select = td.querySelector(".role-select");
+  const value = select ? select.value : "";
+  const cells = tr.querySelectorAll("td");
+  const name  = (cells[1] ? cells[1].textContent.trim() : "") || "(no name)";
+  const start = cells[2] ? cells[2].textContent.trim() : "";
+  const end   = cells[3] ? cells[3].textContent.trim() : "";
+  const shift = (start && end) ? `${start} - ${end}` : (start || end || "");
+  const newLine = `${name} - Sick${shift ? " - " + shift : ""}`;
+  const prev = tr.dataset.sickNote || "";
+
+  if (value === ROLE_SICK) {
+    if (prev !== newLine) { replaceObsLine(prev, newLine); tr.dataset.sickNote = newLine; }
+  } else if (prev) {
+    replaceObsLine(prev, "");
+    tr.dataset.sickNote = "";
+  }
+  updateObsBadge();
+}
+
+function replaceObsLine(oldLine, newLine) {
+  const ta = document.getElementById("obsText");
+  if (!ta) return;
+  let lines = ta.value ? ta.value.split("\n") : [];
+  if (oldLine) {
+    const idx = lines.indexOf(oldLine);
+    if (idx > -1) { if (newLine) lines[idx] = newLine; else lines.splice(idx, 1); }
+    else if (newLine) lines.push(newLine);
+  } else if (newLine) {
+    lines.push(newLine);
+  }
+  ta.value = lines.join("\n");
+}
+
+function updateObsBadge() {
+  const ta = document.getElementById("obsText");
+  const badge = document.getElementById("obsCount");
+  if (!ta || !badge) return;
+  const n = ta.value.split("\n").filter(l => l.trim()).length;
+  badge.textContent = n;
+  badge.style.display = n ? "inline-flex" : "none";
+}
+
+function openObs() {
+  const overlay = document.getElementById("obsMode");
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("ipad-open");
+  const ta = document.getElementById("obsText");
+  if (ta) ta.focus();
+}
+
+function closeObs() {
+  const overlay = document.getElementById("obsMode");
+  overlay.classList.remove("open");
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("ipad-open");
+  updateObsBadge();
 }
 
 function createScheduleRow(row = {}) {
@@ -1740,6 +1928,7 @@ function openIpadMode() {
 
     const tr = document.createElement("tr");
     if (role === ROLE_HIGHLIGHT) tr.classList.add("role-sh");
+    if (role === ROLE_SICK) tr.classList.add("role-sick");
 
     tr.innerHTML =
       `<td class="ipad-role">${role}</td>` +
@@ -1788,6 +1977,9 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && document.getElementById("ipadMode").classList.contains("open")) {
     closeIpadMode();
   }
+  if (e.key === "Escape" && document.getElementById("obsMode").classList.contains("open")) {
+    closeObs();
+  }
 });
 
 // ── Dark mode ───────────────────────────────────────────────────────────────
@@ -1813,6 +2005,7 @@ function updateDarkIcon() {
 
 // ── Auth init: confirm session and reveal Admin-only features ────────────────
 let currentUser = null;
+let isAdmin = false;
 (async function initAuth() {
   try {
     const res = await fetch("/me");
@@ -1820,8 +2013,12 @@ let currentUser = null;
     if (!data.authenticated) { window.location.href = "/login.html"; return; }
     currentUser = data.user;
     if (currentUser === "Admin") {
-      const ipadBtn = document.getElementById("ipadBtn");
-      if (ipadBtn) ipadBtn.style.display = "";   // iPad view is Admin-only
+      isAdmin = true;
+      ["ipadBtn", "obsBtn"].forEach(id => {   // iPad view + Observations are Admin-only
+        const el = document.getElementById(id);
+        if (el) el.style.display = "";
+      });
+      refreshRoleOptions();   // make the Sick role available on any existing rows
     }
   } catch (e) {
     // network hiccup — leave the page as-is rather than locking the user out

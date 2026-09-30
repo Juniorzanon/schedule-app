@@ -202,10 +202,14 @@ app.post("/export", requireApiAuth, async (req, res) => {
       break30: row.break30 || "",
       break15: row.break15 || ""
     });
-    // Highlight Shift rows in grey to match the printout
-    if ((row.role || "") === "Shift") {
+    // Highlight rows to match the printout: Shift = grey, Sick = soft red
+    const role = row.role || "";
+    let fillColor = null;
+    if (role === "Shift") fillColor = "FFCFCFCF";
+    else if (role === "Sick") fillColor = "FFF2C4C4";
+    if (fillColor) {
       added.eachCell(cell => {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFCFCFCF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillColor } };
       });
     }
   });
