@@ -56,7 +56,7 @@ function authCookie(token) {
     "; HttpOnly; Path=/; Max-Age=" + Math.floor(AUTH_TTL_MS / 1000) + "; SameSite=Lax";
 }
 function requireApiAuth(req, res, next) {
-  if (!isAuthed(req)) return res.status(401).send("Sessão expirada. Faça login novamente.");
+  if (!isAuthed(req)) return res.status(401).send("Session expired. Please log in again.");
   next();
 }
 
@@ -91,7 +91,7 @@ app.post("/login", (req, res) => {
     res.setHeader("Set-Cookie", authCookie(makeToken(username)));
     return res.json({ success: true, user: username });
   }
-  return res.status(401).json({ success: false, message: "Usuário ou senha inválidos." });
+  return res.status(401).json({ success: false, message: "Invalid username or password." });
 });
 
 app.post("/logout", (req, res) => {
@@ -117,13 +117,13 @@ app.use(express.static("public"));
 // ===================== //
 app.post("/upload", requireApiAuth, upload.single("file"), (req, res) => {
   if (!req.file) {
-    return res.status(400).send("Nenhum arquivo enviado.");
+    return res.status(400).send("No file uploaded.");
   }
 
   const originalName = req.file.originalname || "";
   if (path.extname(originalName).toLowerCase() !== ".pdf") {
     fs.unlink(req.file.path, () => {});
-    return res.status(400).send("Apenas arquivos PDF são aceitos.");
+    return res.status(400).send("Only PDF files are accepted.");
   }
 
   const filePath = req.file.path;
@@ -137,7 +137,7 @@ app.post("/upload", requireApiAuth, upload.single("file"), (req, res) => {
 
     if (error) {
       console.error("Erro na execução do parser.py:", stderr || error);
-      return res.status(500).send("Erro no processamento do arquivo: " + (stderr || error.message));
+      return res.status(500).send("Error processing the file: " + (stderr || error.message));
     }
 
     try {
@@ -147,7 +147,7 @@ app.post("/upload", requireApiAuth, upload.single("file"), (req, res) => {
       res.json({ success: true, sessionId: sessionId, count: extractedData.length });
     } catch (jsonError) {
       console.error("Erro ao fazer parse do JSON do parser.py:", jsonError, "Stdout:", stdout);
-      return res.status(500).send("Erro ao processar a saída do parser.py. Verifique o formato JSON.");
+      return res.status(500).send("Error processing the parser output. Please check the JSON format.");
     }
   });
 });
@@ -159,7 +159,7 @@ app.post("/generate", requireApiAuth, (req, res) => {
   const { day, sessionId } = req.body;
 
   if (!sessionId || !sessionData[sessionId]) {
-    return res.status(404).send("Sessão expirada ou inválida. Faça o upload novamente.");
+    return res.status(404).send("Session expired or invalid. Please upload the file again.");
   }
 
   const extractedData = sessionData[sessionId].data;
@@ -198,7 +198,7 @@ app.post("/export", requireApiAuth, async (req, res) => {
   const { data } = req.body;
 
   if (!data || !Array.isArray(data) || data.length === 0) {
-    return res.status(400).send("Nenhum dado para exportar.");
+    return res.status(400).send("No data to export.");
   }
 
   const workbook = new ExcelJS.Workbook();
@@ -244,7 +244,7 @@ app.post("/export", requireApiAuth, async (req, res) => {
     res.end();
   } catch (writeError) {
     console.error("Erro ao escrever o arquivo Excel:", writeError);
-    res.status(500).send("Erro ao gerar o arquivo Excel.");
+    res.status(500).send("Error generating the Excel file.");
   }
 });
 
