@@ -166,10 +166,30 @@ app.post("/generate", requireApiAuth, (req, res) => {
 
   const filtered = extractedData
     .filter(e => e.day === day)
-    .sort((a, b) => a.start.localeCompare(b.start));
+    .sort((a, b) => {
+      const ka = shiftSortKey(a.start, a.end);
+      const kb = shiftSortKey(b.start, b.end);
+      return (ka.s - kb.s) || (ka.e - kb.e);
+    });
 
   res.json(filtered);
 });
+
+// Ordena por início (asc) e depois por fim (asc), tratando turnos que passam da meia-noite
+function timeToMinutes(str) {
+  if (!str) return null;
+  const m = String(str).trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+function shiftSortKey(startStr, endStr) {
+  const NO_TIME = 100000;
+  const s = timeToMinutes(startStr);
+  let e = timeToMinutes(endStr);
+  if (s === null) return { s: NO_TIME, e: NO_TIME };
+  if (e !== null && e <= s) e += 24 * 60;
+  return { s, e: e === null ? NO_TIME : e };
+}
 
 // ===================== //
 // EXPORTAR PARA EXCEL //
