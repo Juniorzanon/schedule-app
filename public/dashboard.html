@@ -1156,6 +1156,10 @@ body.ipad-open { overflow: hidden; }
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Home
     </button>
+    <button class="btn btn-icon" onclick="logout()" title="Log out">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </button>
   </div>
 </div>
 
@@ -1243,8 +1247,8 @@ body.ipad-open { overflow: hidden; }
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Print
         </button>
-        <!-- iPad view temporarily disabled — remove style="display:none" to re-enable -->
-        <button class="btn btn-icon" onclick="openIpadMode()" title="Open iPad view (full-screen sheet)" style="display:none">
+        <!-- iPad view: only shown for the Admin login (revealed by initAuth) -->
+        <button id="ipadBtn" class="btn btn-icon" onclick="openIpadMode()" title="Open iPad view (full-screen sheet)" style="display:none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
           iPad
         </button>
@@ -1437,6 +1441,7 @@ async function uploadFile() {
 
   try {
     const res = await fetch("/upload", { method:"POST", body: formData });
+    if (res.status === 401) return handleAuthExpired();
     if (!res.ok) throw new Error(await res.text() || "Upload failed.");
     const result = await res.json();
     if (!result.success) throw new Error("Error processing file.");
@@ -1471,6 +1476,7 @@ async function generateSchedule() {
       body: JSON.stringify({ day, sessionId: currentSessionId })
     });
 
+    if (res.status === 401) return handleAuthExpired();
     if (!res.ok) {
       const message = await res.text();
       if (res.status === 404) { currentSessionId = null; sessionStorage.removeItem("scheduleSessionId"); }
@@ -1686,6 +1692,7 @@ async function exportExcel() {
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ data: tableData })
     });
+    if (res.status === 401) return handleAuthExpired();
     if (!res.ok) throw new Error(await res.text() || "Export failed.");
     const blob = await res.blob();
     const url  = URL.createObjectURL(blob);
@@ -1804,6 +1811,23 @@ function updateDarkIcon() {
   }
 })();
 
+// ── Auth init: confirm session and reveal Admin-only features ────────────────
+let currentUser = null;
+(async function initAuth() {
+  try {
+    const res = await fetch("/me");
+    const data = await res.json();
+    if (!data.authenticated) { window.location.href = "/login.html"; return; }
+    currentUser = data.user;
+    if (currentUser === "Admin") {
+      const ipadBtn = document.getElementById("ipadBtn");
+      if (ipadBtn) ipadBtn.style.display = "";   // iPad view is Admin-only
+    }
+  } catch (e) {
+    // network hiccup — leave the page as-is rather than locking the user out
+  }
+})();
+
 document.getElementById("daySelect").addEventListener("change", () => {
   if (document.querySelector("#table tbody tr")) updatePrintTitle();
 });
@@ -1813,6 +1837,16 @@ document.getElementById("scheduleDate").addEventListener("change", () => {
 });
 
 function goHome() { window.location.href = "/"; }
+
+async function logout() {
+  try { await fetch("/logout", { method: "POST" }); } catch (e) {}
+  window.location.href = "/login.html";
+}
+
+// Se qualquer chamada de dados retornar 401 (sessão expirada), volta ao login
+function handleAuthExpired() {
+  window.location.href = "/login.html";
+}
 </script>
 </body>
 </html>
