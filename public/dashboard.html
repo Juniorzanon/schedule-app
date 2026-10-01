@@ -621,6 +621,20 @@ tbody tr.role-sick td { background: #f7d5d5 !important; }
 tbody tr.role-sick td[contenteditable] { background: #f3c9c9 !important; }
 .dark tbody tr.role-sick td[contenteditable] { background: #5e3735 !important; }
 
+/* Delivery — highlight the whole row in light blue */
+tbody tr.role-delivery td { background: #dbeafe !important; }
+.dark tbody tr.role-delivery td { background: #26354f !important; }
+tbody tr.role-delivery td[contenteditable] { background: #cfe0fb !important; }
+.dark tbody tr.role-delivery td[contenteditable] { background: #2e405f !important; }
+
+/* "!" before the name for rows with an Observations note (Sick / N/A / Late) */
+tbody tr.has-note td:nth-child(2)::before {
+  content: "! ";
+  color: #d84a4a;
+  font-weight: 700;
+}
+.dark tbody tr.has-note td:nth-child(2)::before { color: #f87171; }
+
 /* Obs button count badge */
 .obs-count {
   display: inline-flex;
@@ -971,6 +985,8 @@ body.ipad-open { overflow: hidden; }
 
 .ipad-table tr.role-sh td { background: #cfcfcf !important; }
 .ipad-table tr.role-sick td { background: #f7d5d5 !important; }
+.ipad-table tr.role-delivery td { background: #dbeafe !important; }
+.ipad-table tr.has-note td:nth-child(2)::before { content: "! "; color: #d84a4a; font-weight: 700; }
 
 /* ── Observations modal ── */
 .obs-overlay {
@@ -1180,6 +1196,12 @@ body.ipad-open { overflow: hidden; }
   /* A Sick row overrides white with a soft red highlight */
   tbody tr.role-sick td {
     background: #f2c4c4 !important;
+    color: #000 !important;
+  }
+
+  /* A Delivery row overrides white with a light blue highlight */
+  tbody tr.role-delivery td {
+    background: #d4e4fb !important;
     color: #000 !important;
   }
 
@@ -1645,13 +1667,16 @@ function createCheckboxCell(checked = false) {
   return td;
 }
 
-const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule", "Beef"];
-const ROLE_HIGHLIGHT = "Shift";   // role whose whole row is highlighted grey
-const ROLE_SICK = "Sick";         // Admin-only role: row turns soft red + auto-fills Observations
+const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule", "Beef", "Lobby", "Kitchen", "Front", "Dive"];
+const ROLE_HIGHLIGHT = "Shift";       // row highlighted grey
+const ROLE_DELIVERY = "Delivery";     // row highlighted light blue
+const ROLE_SICK = "Sick";             // row highlighted soft red
+const ADMIN_ROLES = ["Sick", "N/A", "Late"];   // only available to the Admin login
+const NOTE_ROLES  = ["Sick", "N/A", "Late"];   // auto-fill Observations + show "!" before the name
 
-// "Sick" only exists for the Admin login (feature in testing)
+// Admin-only roles are added only for the Admin login (feature in testing)
 function getRoleOptions() {
-  return isAdmin ? ROLE_OPTIONS.concat([ROLE_SICK]) : ROLE_OPTIONS.slice();
+  return isAdmin ? ROLE_OPTIONS.concat(ADMIN_ROLES) : ROLE_OPTIONS.slice();
 }
 
 function createRoleCell(role = "") {
@@ -1666,22 +1691,24 @@ function createRoleCell(role = "") {
     select.appendChild(opt);
   });
   select.value = getRoleOptions().includes(role) ? role : "";
-  select.addEventListener("change", () => { applyRole(td); handleSickObs(td); });
+  select.addEventListener("change", () => { applyRole(td); handleObsRole(td); });
   td.appendChild(select);
   applyRole(td);
   return td;
 }
 
-// Adds the Sick option to existing role selects once Admin is confirmed
+// Adds the Admin-only options to existing role selects once Admin is confirmed
 function refreshRoleOptions() {
   if (!isAdmin) return;
   document.querySelectorAll(".role-select").forEach(sel => {
-    if (![...sel.options].some(o => o.value === ROLE_SICK)) {
-      const opt = document.createElement("option");
-      opt.value = ROLE_SICK;
-      opt.textContent = ROLE_SICK;
-      sel.appendChild(opt);
-    }
+    ADMIN_ROLES.forEach(role => {
+      if (![...sel.options].some(o => o.value === role)) {
+        const opt = document.createElement("option");
+        opt.value = role;
+        opt.textContent = role;
+        sel.appendChild(opt);
+      }
+    });
   });
 }
 
@@ -1692,12 +1719,19 @@ function applyRole(td) {
   const tr = td.closest("tr");
   if (tr) {
     tr.classList.toggle("role-sh", value === ROLE_HIGHLIGHT);
+    tr.classList.toggle("role-delivery", value === ROLE_DELIVERY);
     tr.classList.toggle("role-sick", value === ROLE_SICK);
+    tr.classList.toggle("has-note", NOTE_ROLES.includes(value));   // "!" before the name
   }
 }
 
-// ── Observations: auto-fill when a person is marked Sick ─────────────────────
-function handleSickObs(td) {
+// ── Observations: auto-fill when a person is marked Sick / N/A / Late ────────
+function obsLineFor(role, name, shift) {
+  if (role === "Late") return `${name} - Late - ___ min${shift ? " - " + shift : ""}`;
+  return `${name} - ${role}${shift ? " - " + shift : ""}`;   // Sick, N/A
+}
+
+function handleObsRole(td) {
   const tr = td.closest("tr");
   if (!tr) return;
   const select = td.querySelector(".role-select");
@@ -1707,14 +1741,14 @@ function handleSickObs(td) {
   const start = cells[2] ? cells[2].textContent.trim() : "";
   const end   = cells[3] ? cells[3].textContent.trim() : "";
   const shift = (start && end) ? `${start} - ${end}` : (start || end || "");
-  const newLine = `${name} - Sick${shift ? " - " + shift : ""}`;
-  const prev = tr.dataset.sickNote || "";
+  const prev = tr.dataset.obsNote || "";
 
-  if (value === ROLE_SICK) {
-    if (prev !== newLine) { replaceObsLine(prev, newLine); tr.dataset.sickNote = newLine; }
+  if (NOTE_ROLES.includes(value)) {
+    const newLine = obsLineFor(value, name, shift);
+    if (prev !== newLine) { replaceObsLine(prev, newLine); tr.dataset.obsNote = newLine; }
   } else if (prev) {
     replaceObsLine(prev, "");
-    tr.dataset.sickNote = "";
+    tr.dataset.obsNote = "";
   }
   updateObsBadge();
 }
@@ -1968,7 +2002,9 @@ function openIpadMode() {
 
     const tr = document.createElement("tr");
     if (role === ROLE_HIGHLIGHT) tr.classList.add("role-sh");
+    if (role === ROLE_DELIVERY) tr.classList.add("role-delivery");
     if (role === ROLE_SICK) tr.classList.add("role-sick");
+    if (NOTE_ROLES.includes(role)) tr.classList.add("has-note");
 
     tr.innerHTML =
       `<td class="ipad-role">${role}</td>` +

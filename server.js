@@ -222,11 +222,12 @@ app.post("/export", requireApiAuth, async (req, res) => {
       break30: row.break30 || "",
       break15: row.break15 || ""
     });
-    // Highlight rows to match the printout: Shift = grey, Sick = soft red
+    // Highlight rows to match the printout: Shift = grey, Sick = soft red, Delivery = light blue
     const role = row.role || "";
     let fillColor = null;
     if (role === "Shift") fillColor = "FFCFCFCF";
     else if (role === "Sick") fillColor = "FFF2C4C4";
+    else if (role === "Delivery") fillColor = "FFD4E4FB";
     if (fillColor) {
       added.eachCell(cell => {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillColor } };
