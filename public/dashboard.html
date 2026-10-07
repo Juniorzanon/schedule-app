@@ -1034,7 +1034,23 @@ body.ipad-open { overflow: hidden; }
   outline: none;
 }
 #obsText:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,110,220,.15); }
-.obs-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.obs-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+
+/* Send report modal */
+.report-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.report-list .report-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+  font-size: 14px; cursor: pointer;
+}
+.report-list .report-item input { width: 17px; height: 17px; }
+.report-list .report-empty { font-size: 13px; color: var(--muted); padding: 2px; }
+.report-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+#reportManual {
+  width: 100%; height: 42px; padding: 0 14px; font-size: 14px; font-family: inherit;
+  color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; outline: none;
+}
+#reportManual:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,110,220,.15); }
 
 .ipad-check {
   display: inline-block;
@@ -1229,6 +1245,8 @@ body.ipad-open { overflow: hidden; }
   }
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 
 <body>
@@ -1361,6 +1379,11 @@ body.ipad-open { overflow: hidden; }
           Obs
           <span id="obsCount" class="obs-count" style="display:none">0</span>
         </button>
+        <!-- Send report: Admin-only (revealed by initAuth, in testing) -->
+        <button id="reportBtn" class="btn btn-icon" onclick="openReport()" title="Send report by email" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send report
+        </button>
       </div>
     </div>
 
@@ -1452,6 +1475,32 @@ body.ipad-open { overflow: hidden; }
     <textarea id="obsText" placeholder="e.g. Junior Zanon arrived 20 min late"></textarea>
     <div class="obs-actions">
       <button class="btn btn-primary" onclick="closeObs()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Send report modal (Admin-only) -->
+<div id="reportMode" class="obs-overlay" aria-hidden="true">
+  <div class="obs-card">
+    <div class="obs-head">
+      <div class="obs-head-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <span>Send report</span>
+      </div>
+      <button class="obs-x" onclick="closeReport()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <p class="obs-hint">Sends a PDF (the day's sheet + observations) to the selected addresses.</p>
+    <div id="reportEmailList" class="report-list"></div>
+    <label class="report-label" for="reportManual">Add another email</label>
+    <input type="email" id="reportManual" placeholder="name@example.com" autocomplete="off">
+    <div class="obs-actions">
+      <button class="btn" onclick="closeReport()">Cancel</button>
+      <button class="btn btn-primary" id="reportSendBtn" onclick="sendReport()">Send</button>
+    </div>
+    <div class="status-bar" id="reportStatus" style="margin-top:12px;">
+      <div class="status-pill" id="reportStatusPill"></div>
     </div>
   </div>
 </div>
@@ -1868,6 +1917,186 @@ function closeObs() {
   updateObsBadge();
 }
 
+// ── Send report by e-mail (Admin, in testing) ───────────────────────────────
+function reportDateLabel() {
+  // DD/MM/YY from the schedule date, else today
+  const v = document.getElementById("scheduleDate").value;
+  const d = v ? new Date(v + "T00:00:00") : new Date();
+  const p = n => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
+}
+function reportSubject() { return "Floor plan report - " + reportDateLabel(); }
+
+async function openReport() {
+  if (!getTableData().length) {
+    setStatus("generateStatus", "generateStatusPill", "Generate a schedule before sending a report.", "error");
+    return;
+  }
+  const overlay = document.getElementById("reportMode");
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("ipad-open");
+  setStatus("reportStatus", "reportStatusPill", "", "");
+  document.getElementById("reportManual").value = "";
+
+  const list = document.getElementById("reportEmailList");
+  list.innerHTML = '<div class="report-empty">Loading saved emails…</div>';
+  try {
+    const res = await fetch("/report-emails");
+    if (res.status === 401) return handleAuthExpired();
+    const data = await res.json();
+    if (!data.configured) {
+      list.innerHTML = '<div class="report-empty">Email sending is not set up on the server yet.</div>';
+    } else if (!data.emails || !data.emails.length) {
+      list.innerHTML = '<div class="report-empty">No saved emails. Type one below.</div>';
+    } else {
+      list.innerHTML = "";
+      data.emails.forEach((em, i) => {
+        const label = document.createElement("label");
+        label.className = "report-item";
+        label.innerHTML = `<input type="checkbox" value="${em}" ${i === 0 ? "checked" : ""}><span>${em}</span>`;
+        list.appendChild(label);
+      });
+    }
+  } catch (e) {
+    list.innerHTML = '<div class="report-empty">Could not load the saved emails.</div>';
+  }
+}
+
+function closeReport() {
+  const overlay = document.getElementById("reportMode");
+  overlay.classList.remove("open");
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("ipad-open");
+}
+
+function collectReportRecipients() {
+  const picked = Array.from(document.querySelectorAll("#reportEmailList input:checked")).map(c => c.value);
+  const manual = document.getElementById("reportManual").value.trim();
+  if (manual) picked.push(manual);
+  return [...new Set(picked.map(e => e.trim()).filter(Boolean))];
+}
+
+function buildReportPdf() {
+  const JsPDF = window.jspdf && window.jspdf.jsPDF;
+  if (!JsPDF) throw new Error("PDF library not loaded yet. Try again in a moment.");
+  const doc = new JsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const rows = getTableData();
+  const title = (document.getElementById("printTitle").textContent || "Schedule").trim();
+  const NOTE = ["Sick", "N/A", "Late", "N/S"];
+  const fillFor = r => {
+    if (r === "Shift") return [207, 207, 207];
+    if (r === "Sick" || r === "N/S") return [242, 196, 196];
+    if (r === "Delivery") return [212, 228, 251];
+    return null;
+  };
+
+  // Page 1 — the day's sheet
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.text(title, pageW / 2, 40, { align: "center" });
+
+  const body = rows.map(r => [
+    r.role || "",
+    (NOTE.includes(r.role) ? "! " : "") + (r.name || ""),
+    r.start || "",
+    r.end || "",
+    "", ""
+  ]);
+
+  doc.autoTable({
+    startY: 58,
+    head: [["Role", "Name", "Start", "End", "Break 30", "Break 15"]],
+    body,
+    theme: "grid",
+    styles: { fontSize: 10, cellPadding: 5, lineColor: [180, 180, 180], lineWidth: 0.5, textColor: [0, 0, 0] },
+    headStyles: { fillColor: [59, 110, 220], textColor: [255, 255, 255], halign: "left" },
+    columnStyles: {
+      0: { halign: "center", fontStyle: "bold", cellWidth: 65 },
+      2: { halign: "center", cellWidth: 55 },
+      3: { halign: "center", cellWidth: 55 },
+      4: { halign: "center", cellWidth: 70 },
+      5: { halign: "center", cellWidth: 70 }
+    },
+    didParseCell: data => {
+      if (data.section === "body") {
+        const fill = fillFor(rows[data.row.index].role);
+        if (fill) data.cell.styles.fillColor = fill;
+      }
+    },
+    didDrawCell: data => {
+      if (data.section !== "body") return;
+      if (data.column.index === 4 || data.column.index === 5) {
+        const r = rows[data.row.index];
+        const checked = data.column.index === 4 ? r.break30 === "Yes" : r.break15 === "Yes";
+        const s = 11;
+        const x = data.cell.x + data.cell.width / 2 - s / 2;
+        const y = data.cell.y + data.cell.height / 2 - s / 2;
+        doc.setDrawColor(90); doc.setLineWidth(0.9);
+        doc.rect(x, y, s, s);
+        if (checked) {
+          doc.setFillColor(59, 110, 220);
+          doc.rect(x, y, s, s, "F");
+          doc.setDrawColor(255, 255, 255); doc.setLineWidth(1.4);
+          doc.line(x + 2.2, y + 5.5, x + 4.5, y + 8.2);
+          doc.line(x + 4.5, y + 8.2, x + 8.8, y + 2.8);
+        }
+      }
+    }
+  });
+
+  // Page 2 — observations
+  doc.addPage();
+  doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+  doc.text("Observations", pageW / 2, 40, { align: "center" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+  const obs = (document.getElementById("obsText").value || "").trim();
+  const text = obs || "No observations for the day.";
+  const lines = doc.splitTextToSize(text, pageW - 80);
+  doc.text(lines, 40, 72);
+
+  return doc;
+}
+
+async function sendReport() {
+  const recipients = collectReportRecipients();
+  if (!recipients.length) {
+    setStatus("reportStatus", "reportStatusPill", "Select or type at least one email.", "error");
+    return;
+  }
+  const bad = recipients.find(e => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+  if (bad) {
+    setStatus("reportStatus", "reportStatusPill", `"${bad}" is not a valid email.`, "error");
+    return;
+  }
+
+  const btn = document.getElementById("reportSendBtn");
+  btn.disabled = true;
+  setStatus("reportStatus", "reportStatusPill", "Sending…", "info", true);
+
+  try {
+    const doc = buildReportPdf();
+    const uri = doc.output("datauristring");
+    const pdfBase64 = uri.substring(uri.indexOf("base64,") + 7);
+    const filename = "Floor plan report - " + reportDateLabel().replace(/\//g, "-") + ".pdf";
+
+    const res = await fetch("/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pdfBase64, to: recipients, subject: reportSubject(), filename })
+    });
+    if (res.status === 401) return handleAuthExpired();
+    if (!res.ok) throw new Error(await res.text() || "Could not send the report.");
+    setStatus("reportStatus", "reportStatusPill", "Report sent to " + recipients.join(", "), "success");
+    setTimeout(closeReport, 1400);
+  } catch (err) {
+    setStatus("reportStatus", "reportStatusPill", err.message || "Could not send the report.", "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function createScheduleRow(row = {}) {
   const tr = document.createElement("tr");
   tr.appendChild(createRoleCell(row.role));
@@ -2145,6 +2374,9 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && document.getElementById("obsMode").classList.contains("open")) {
     closeObs();
   }
+  if (e.key === "Escape" && document.getElementById("reportMode").classList.contains("open")) {
+    closeReport();
+  }
 });
 
 // ── Dark mode ───────────────────────────────────────────────────────────────
@@ -2180,6 +2412,8 @@ let isAdmin = false;
     if (currentUser === "Admin") {
       isAdmin = true;
       refreshRoleOptions();   // N/S role is Admin-only while in testing
+      const rb = document.getElementById("reportBtn");   // Send report is Admin-only (in testing)
+      if (rb) rb.style.display = "";
     }
   } catch (e) {
     // network hiccup — leave the page as-is rather than locking the user out

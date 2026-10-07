@@ -7,6 +7,38 @@ const { execFile } = require("child_process");
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
+// ===================== //
+// E-MAIL / RELATÓRIO     //
+// ===================== //
+// Configurado por variáveis de ambiente no Render:
+//   EMAIL_USER  = o Gmail que envia (ex: seunome@gmail.com)
+//   EMAIL_PASS  = a "senha de app" de 16 letras do Gmail (não a senha normal)
+//   EMAIL_FROM  = opcional, remetente exibido (padrão = EMAIL_USER)
+//   REPORT_EMAILS = lista padrão de destinatários, separada por vírgula
+const EMAIL_USER = process.env.EMAIL_USER || "";
+const EMAIL_PASS = process.env.EMAIL_PASS || "";
+const EMAIL_FROM = process.env.EMAIL_FROM || EMAIL_USER;
+const EMAIL_HOST = process.env.EMAIL_HOST || "";   // opcional: SMTP genérico (padrão = Gmail)
+const EMAIL_PORT = process.env.EMAIL_PORT || "";
+
+function makeTransport() {
+  if (EMAIL_HOST) {
+    const port = Number(EMAIL_PORT) || 587;
+    return nodemailer.createTransport({
+      host: EMAIL_HOST, port, secure: port === 465,
+      auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+    });
+  }
+  return nodemailer.createTransport({ service: "gmail", auth: { user: EMAIL_USER, pass: EMAIL_PASS } });
+}
+const REPORT_EMAILS = (process.env.REPORT_EMAILS || "")
+  .split(",").map(s => s.trim()).filter(Boolean);
+
+function isValidEmail(e) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || "").trim());
+}
 
 const app = express();
 const PYTHON_BIN = process.env.PYTHON_BIN || (process.platform === "win32" ? "python" : "python3");
@@ -246,6 +278,46 @@ app.post("/export", requireApiAuth, async (req, res) => {
   } catch (writeError) {
     console.error("Erro ao escrever o arquivo Excel:", writeError);
     res.status(500).send("Error generating the Excel file.");
+  }
+});
+
+// ===================== //
+// RELATÓRIO POR E-MAIL   //
+// ===================== //
+// Lista padrão de destinatários (vinda do Render) + se o envio está configurado
+app.get("/report-emails", requireApiAuth, (req, res) => {
+  res.json({ emails: REPORT_EMAILS, configured: !!(EMAIL_USER && EMAIL_PASS) });
+});
+
+// Recebe o PDF (gerado no navegador) e envia por e-mail como anexo
+app.post("/report", requireApiAuth, async (req, res) => {
+  if (!EMAIL_USER || !EMAIL_PASS) {
+    return res.status(500).send("Email is not configured on the server yet.");
+  }
+  const { pdfBase64, to, subject, filename } = req.body || {};
+  const recipients = (Array.isArray(to) ? to : [])
+    .map(e => String(e).trim()).filter(isValidEmail);
+
+  if (!recipients.length) return res.status(400).send("Add at least one valid recipient email.");
+  if (!pdfBase64)         return res.status(400).send("No report to send.");
+
+  try {
+    const transporter = makeTransport();
+    await transporter.sendMail({
+      from: EMAIL_FROM || EMAIL_USER,
+      to: recipients.join(", "),
+      subject: subject || "Schedule report",
+      text: "Schedule report attached.",
+      attachments: [{
+        filename: filename || "schedule-report.pdf",
+        content: Buffer.from(pdfBase64, "base64"),
+        contentType: "application/pdf"
+      }]
+    });
+    res.json({ success: true, sentTo: recipients });
+  } catch (err) {
+    console.error("Erro ao enviar e-mail:", err);
+    res.status(500).send("Could not send the email: " + (err.message || "unknown error"));
   }
 });
 
