@@ -1350,13 +1350,13 @@ body.ipad-open { overflow: hidden; }
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Print
         </button>
-        <!-- iPad view: only shown for the Admin login (revealed by initAuth) -->
-        <button id="ipadBtn" class="btn btn-icon" onclick="openIpadMode()" title="Open iPad view (full-screen sheet)" style="display:none">
+        <!-- iPad view: available to all logins -->
+        <button id="ipadBtn" class="btn btn-icon" onclick="openIpadMode()" title="Open iPad view (full-screen sheet)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
           iPad
         </button>
-        <!-- Observations: Admin-only (revealed by initAuth) -->
-        <button id="obsBtn" class="btn btn-icon" onclick="openObs()" title="Observations" style="display:none">
+        <!-- Observations: available to all logins -->
+        <button id="obsBtn" class="btn btn-icon" onclick="openObs()" title="Observations">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Obs
           <span id="obsCount" class="obs-count" style="display:none">0</span>
@@ -1554,6 +1554,7 @@ function endRowDrag() {
   if (draggedRow) draggedRow.classList.remove("dragging");
   draggedRow = null;
   updateMoveButtons();
+  saveState();
 }
 
 // ── Upload ──────────────────────────────────────────────────────────────────
@@ -1648,6 +1649,7 @@ function renderTable(data) {
 
   data.forEach(row => tbody.appendChild(createScheduleRow(row)));
   updateMoveButtons();
+  saveState();
 }
 
 function createEditableCell(value, placeholder) {
@@ -1663,16 +1665,27 @@ function createCheckboxCell(checked = false) {
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.checked = checked;
+  checkbox.dataset.wasChecked = checked ? "1" : "0";
+  checkbox.addEventListener("change", () => {
+    // Confirm before UNchecking a break that was ticked (Admin, in testing)
+    if (isAdmin && !checkbox.checked && checkbox.dataset.wasChecked === "1") {
+      if (!confirm("Are you sure you want to uncheck this break?")) {
+        checkbox.checked = true;   // revert — keep it ticked
+        return;
+      }
+    }
+    checkbox.dataset.wasChecked = checkbox.checked ? "1" : "0";
+  });
   td.appendChild(checkbox);
   return td;
 }
 
-const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule", "Beef", "Lobby", "Kitchen", "Front", "Dive"];
+const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule", "Beef", "Lobby", "Kitchen", "Front", "Dive", "Sick", "N/A", "Late"];
 const ROLE_HIGHLIGHT = "Shift";       // row highlighted grey
 const ROLE_DELIVERY = "Delivery";     // row highlighted light blue
-const ROLE_SICK = "Sick";             // row highlighted soft red
-const ADMIN_ROLES = ["Sick", "N/A", "Late"];   // only available to the Admin login
-const NOTE_ROLES  = ["Sick", "N/A", "Late"];   // auto-fill Observations + show "!" before the name
+const ADMIN_ROLES = ["N/S"];          // new roles, Admin only while in testing
+const RED_ROLES   = ["Sick", "N/S"];  // whole row highlighted soft red
+const NOTE_ROLES  = ["Sick", "N/A", "Late", "N/S"];   // auto-fill Observations + show "!" before the name
 
 // Admin-only roles are added only for the Admin login (feature in testing)
 function getRoleOptions() {
@@ -1720,8 +1733,8 @@ function applyRole(td) {
   if (tr) {
     tr.classList.toggle("role-sh", value === ROLE_HIGHLIGHT);
     tr.classList.toggle("role-delivery", value === ROLE_DELIVERY);
-    tr.classList.toggle("role-sick", value === ROLE_SICK);
-    tr.classList.toggle("has-note", NOTE_ROLES.includes(value));   // "!" before the name
+    tr.classList.toggle("role-sick", RED_ROLES.includes(value));    // red row: Sick, N/S
+    tr.classList.toggle("has-note", NOTE_ROLES.includes(value));    // "!" before the name
   }
 }
 
@@ -1751,6 +1764,68 @@ function handleObsRole(td) {
     tr.dataset.obsNote = "";
   }
   updateObsBadge();
+  saveState();
+}
+
+// ── Persistence: keep the day's work on the device (Admin, in testing) ───────
+const STORAGE_KEY = "scheduleAppState_v1";
+let saveTimer = null;
+
+function saveState() {
+  if (!isAdmin) return;   // persistence is Admin-only while in testing
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      const ta = document.getElementById("obsText");
+      const state = {
+        day:  document.getElementById("daySelect").value,
+        date: document.getElementById("scheduleDate").value,
+        rows: getTableData(),
+        obs:  ta ? ta.value : "",
+        savedAt: Date.now()
+      };
+      if (state.rows.length || (state.obs && state.obs.trim())) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (e) { /* storage unavailable — ignore */ }
+  }, 300);
+}
+
+function restoreState() {
+  let state = null;
+  try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch (e) {}
+  if (!state || !state.rows || !state.rows.length) return;
+
+  if (state.day)  document.getElementById("daySelect").value = state.day;
+  if (state.date) document.getElementById("scheduleDate").value = state.date;
+  const ta = document.getElementById("obsText");
+  if (ta) ta.value = state.obs || "";
+
+  renderTable(state.rows);
+
+  // Re-link each note row to its auto Observations line so toggling still works
+  document.querySelectorAll("#table tbody tr").forEach(tr => {
+    const sel = tr.querySelector(".role-select");
+    const val = sel ? sel.value : "";
+    if (NOTE_ROLES.includes(val)) {
+      const cells = tr.querySelectorAll("td");
+      const name  = (cells[1] ? cells[1].textContent.trim() : "") || "(no name)";
+      const start = cells[2] ? cells[2].textContent.trim() : "";
+      const end   = cells[3] ? cells[3].textContent.trim() : "";
+      const shift = (start && end) ? `${start} - ${end}` : (start || end || "");
+      tr.dataset.obsNote = obsLineFor(val, name, shift);
+    }
+  });
+
+  updateObsBadge();
+  updatePrintTitle();
+  setStatus("generateStatus", "generateStatusPill", "Restored your saved schedule.", "success");
+}
+
+function clearSavedState() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
 }
 
 function replaceObsLine(oldLine, newLine) {
@@ -1888,6 +1963,7 @@ function sortSchedule() {
     .forEach(item => tbody.appendChild(item.row));   // re-append in the new order
 
   updateMoveButtons();
+  saveState();
   setStatus("generateStatus", "generateStatusPill", "Schedule sorted by start and end time.", "success");
 }
 
@@ -1901,12 +1977,14 @@ function moveRow(button, direction) {
     tbody.insertBefore(row.nextElementSibling, row);
   }
   updateMoveButtons();
+  saveState();
 }
 
 function removeRow(button) {
   const row = button.closest("tr");
   row.remove();
   syncTableState();
+  saveState();
 }
 
 function addBlankRow() {
@@ -1915,6 +1993,7 @@ function addBlankRow() {
   tbody.appendChild(row);
   syncTableState();
   row.querySelector("td[contenteditable]").focus();
+  saveState();
 }
 
 // ── Clear ───────────────────────────────────────────────────────────────────
@@ -1926,6 +2005,7 @@ function clearTable() {
   document.getElementById("emptyState").style.display = "";
   document.getElementById("tableWrapper").style.display = "none";
   setStatus("generateStatus","generateStatusPill","","");
+  clearSavedState();
 }
 
 function getTableData() {
@@ -2003,7 +2083,7 @@ function openIpadMode() {
     const tr = document.createElement("tr");
     if (role === ROLE_HIGHLIGHT) tr.classList.add("role-sh");
     if (role === ROLE_DELIVERY) tr.classList.add("role-delivery");
-    if (role === ROLE_SICK) tr.classList.add("role-sick");
+    if (RED_ROLES.includes(role)) tr.classList.add("role-sick");
     if (NOTE_ROLES.includes(role)) tr.classList.add("has-note");
 
     tr.innerHTML =
@@ -2033,10 +2113,19 @@ function makeIpadCheck(sourceInput) {
   box.setAttribute("role", "checkbox");
   box.setAttribute("aria-checked", sourceInput && sourceInput.checked ? "true" : "false");
   box.addEventListener("click", () => {
-    const now = !box.classList.contains("checked");
+    const currentlyChecked = box.classList.contains("checked");
+    // Confirm before UNchecking a break that was ticked (Admin, in testing)
+    if (isAdmin && currentlyChecked && !confirm("Are you sure you want to uncheck this break?")) {
+      return;
+    }
+    const now = !currentlyChecked;
     box.classList.toggle("checked", now);
     box.setAttribute("aria-checked", now ? "true" : "false");
-    if (sourceInput) sourceInput.checked = now;   // keep the main sheet in sync
+    if (sourceInput) {   // keep the main sheet in sync
+      sourceInput.checked = now;
+      sourceInput.dataset.wasChecked = now ? "1" : "0";
+    }
+    saveState();
   });
   return box;
 }
@@ -2090,23 +2179,30 @@ let isAdmin = false;
     currentUser = data.user;
     if (currentUser === "Admin") {
       isAdmin = true;
-      ["ipadBtn", "obsBtn"].forEach(id => {   // iPad view + Observations are Admin-only
-        const el = document.getElementById(id);
-        if (el) el.style.display = "";
-      });
-      refreshRoleOptions();   // make the Sick role available on any existing rows
+      refreshRoleOptions();   // N/S role is Admin-only while in testing
     }
   } catch (e) {
     // network hiccup — leave the page as-is rather than locking the user out
   }
+  if (isAdmin) restoreState();   // bring back the saved schedule (Admin, in testing)
+})();
+
+// Persist edits as they happen (checkbox/select change, cell typing)
+document.getElementById("table").addEventListener("change", saveState);
+document.getElementById("table").addEventListener("input", saveState);
+(function () {
+  const ta = document.getElementById("obsText");
+  if (ta) ta.addEventListener("input", () => { updateObsBadge(); saveState(); });
 })();
 
 document.getElementById("daySelect").addEventListener("change", () => {
   if (document.querySelector("#table tbody tr")) updatePrintTitle();
+  saveState();
 });
 
 document.getElementById("scheduleDate").addEventListener("change", () => {
   if (document.querySelector("#table tbody tr")) updatePrintTitle();
+  saveState();
 });
 
 function goHome() { window.location.href = "/"; }

@@ -22,7 +22,7 @@ const USERS = {
   Admin: process.env.ADMIN_PASSWORD || ""
 };
 const AUTH_SECRET = process.env.AUTH_SECRET || "change-me-set-AUTH_SECRET-in-env";
-const AUTH_TTL_MS = 12 * 60 * 60 * 1000; // sessão dura 12 horas
+const AUTH_TTL_MS = 7 * 24 * 60 * 60 * 1000; // sessão dura 7 dias (evita deslogar no meio do turno)
 
 function sign(value) {
   return crypto.createHmac("sha256", AUTH_SECRET).update(value).digest("hex");
@@ -226,7 +226,7 @@ app.post("/export", requireApiAuth, async (req, res) => {
     const role = row.role || "";
     let fillColor = null;
     if (role === "Shift") fillColor = "FFCFCFCF";
-    else if (role === "Sick") fillColor = "FFF2C4C4";
+    else if (role === "Sick" || role === "N/S") fillColor = "FFF2C4C4";
     else if (role === "Delivery") fillColor = "FFD4E4FB";
     if (fillColor) {
       added.eachCell(cell => {
