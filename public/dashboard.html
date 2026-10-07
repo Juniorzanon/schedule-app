@@ -1380,7 +1380,7 @@ body.ipad-open { overflow: hidden; }
           <span id="obsCount" class="obs-count" style="display:none">0</span>
         </button>
         <!-- Send report: Admin-only (revealed by initAuth, in testing) -->
-        <button id="reportBtn" class="btn btn-icon" onclick="openReport()" title="Send report by email" style="display:none">
+        <button id="reportBtn" class="btn btn-icon" onclick="openReport()" title="Send report by email">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           Send report
         </button>
@@ -1717,7 +1717,7 @@ function createCheckboxCell(checked = false) {
   checkbox.dataset.wasChecked = checked ? "1" : "0";
   checkbox.addEventListener("change", () => {
     // Confirm before UNchecking a break that was ticked (Admin, in testing)
-    if (isAdmin && !checkbox.checked && checkbox.dataset.wasChecked === "1") {
+    if (!checkbox.checked && checkbox.dataset.wasChecked === "1") {
       if (!confirm("Are you sure you want to uncheck this break?")) {
         checkbox.checked = true;   // revert — keep it ticked
         return;
@@ -1729,14 +1729,13 @@ function createCheckboxCell(checked = false) {
   return td;
 }
 
-const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule", "Beef", "Lobby", "Kitchen", "Front", "Dive", "Sick", "N/A", "Late"];
+const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule", "Beef", "Lobby", "Kitchen", "Front", "Dive", "Sick", "N/A", "Late", "N/S"];
 const ROLE_HIGHLIGHT = "Shift";       // row highlighted grey
 const ROLE_DELIVERY = "Delivery";     // row highlighted light blue
-const ADMIN_ROLES = ["N/S"];          // new roles, Admin only while in testing
+const ADMIN_ROLES = [];               // (no roles are Admin-only anymore)
 const RED_ROLES   = ["Sick", "N/S"];  // whole row highlighted soft red
 const NOTE_ROLES  = ["Sick", "N/A", "Late", "N/S"];   // auto-fill Observations + show "!" before the name
 
-// Admin-only roles are added only for the Admin login (feature in testing)
 function getRoleOptions() {
   return isAdmin ? ROLE_OPTIONS.concat(ADMIN_ROLES) : ROLE_OPTIONS.slice();
 }
@@ -1821,7 +1820,6 @@ const STORAGE_KEY = "scheduleAppState_v1";
 let saveTimer = null;
 
 function saveState() {
-  if (!isAdmin) return;   // persistence is Admin-only while in testing
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try {
@@ -2355,7 +2353,7 @@ function makeIpadCheck(sourceInput) {
   box.addEventListener("click", () => {
     const currentlyChecked = box.classList.contains("checked");
     // Confirm before UNchecking a break that was ticked (Admin, in testing)
-    if (isAdmin && currentlyChecked && !confirm("Are you sure you want to uncheck this break?")) {
+    if (currentlyChecked && !confirm("Are you sure you want to uncheck this break?")) {
       return;
     }
     const now = !currentlyChecked;
@@ -2411,7 +2409,7 @@ function updateDarkIcon() {
   }
 })();
 
-// ── Auth init: confirm session and reveal Admin-only features ────────────────
+// ── Auth init: confirm session; all features available to both logins ────────
 let currentUser = null;
 let isAdmin = false;
 (async function initAuth() {
@@ -2420,16 +2418,11 @@ let isAdmin = false;
     const data = await res.json();
     if (!data.authenticated) { window.location.href = "/login.html"; return; }
     currentUser = data.user;
-    if (currentUser === "Admin") {
-      isAdmin = true;
-      refreshRoleOptions();   // N/S role is Admin-only while in testing
-      const rb = document.getElementById("reportBtn");   // Send report is Admin-only (in testing)
-      if (rb) rb.style.display = "";
-    }
+    isAdmin = (currentUser === "Admin");
   } catch (e) {
     // network hiccup — leave the page as-is rather than locking the user out
   }
-  if (isAdmin) restoreState();   // bring back the saved schedule (Admin, in testing)
+  restoreState();   // bring back the saved schedule (both logins)
 })();
 
 // Persist edits as they happen (checkbox/select change, cell typing)
