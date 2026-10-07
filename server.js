@@ -20,15 +20,39 @@ if (dns.setDefaultResultOrder) {
 // E-MAIL / RELATÓRIO     //
 // ===================== //
 // Configurado por variáveis de ambiente no Render:
-//   EMAIL_USER  = o Gmail que envia (ex: seunome@gmail.com)
-//   EMAIL_PASS  = a "senha de app" de 16 letras do Gmail (não a senha normal)
-//   EMAIL_FROM  = opcional, remetente exibido (padrão = EMAIL_USER)
+//   BREVO_API_KEY = chave do Brevo (envio por HTTPS — recomendado no Render)
+//   EMAIL_FROM    = e-mail remetente verificado no Brevo (ex: seunome@gmail.com)
 //   REPORT_EMAILS = lista padrão de destinatários, separada por vírgula
+//   (SMTP/Gmail como alternativa: EMAIL_USER + EMAIL_PASS; costuma ser bloqueado no Render)
+const BREVO_API_KEY = process.env.BREVO_API_KEY || "";
 const EMAIL_USER = process.env.EMAIL_USER || "";
 const EMAIL_PASS = process.env.EMAIL_PASS || "";
 const EMAIL_FROM = process.env.EMAIL_FROM || EMAIL_USER;
 const EMAIL_HOST = process.env.EMAIL_HOST || "";   // opcional: SMTP genérico (padrão = Gmail)
 const EMAIL_PORT = process.env.EMAIL_PORT || "";
+
+const EMAIL_CONFIGURED = !!(BREVO_API_KEY && EMAIL_FROM) || !!(EMAIL_USER && EMAIL_PASS);
+
+// Envio por HTTPS (Brevo) — funciona no Render, que bloqueia SMTP
+async function sendViaBrevo({ from, to, subject, pdfBase64, filename }) {
+  const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: { "api-key": BREVO_API_KEY, "content-type": "application/json", "accept": "application/json" },
+    body: JSON.stringify({
+      sender: { email: from, name: "Online Schedule" },
+      to: to.map(email => ({ email })),
+      subject,
+      textContent: "Schedule report attached.",
+      attachment: [{ content: pdfBase64, name: filename }]
+    })
+  });
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    const e = new Error("Brevo " + resp.status + ": " + body.slice(0, 300));
+    e.brevoStatus = resp.status;
+    throw e;
+  }
+}
 
 function makeTransport() {
   // Fail fast instead of hanging; force IPv4 (Render has no IPv6)
@@ -295,12 +319,12 @@ app.post("/export", requireApiAuth, async (req, res) => {
 // ===================== //
 // Lista padrão de destinatários (vinda do Render) + se o envio está configurado
 app.get("/report-emails", requireApiAuth, (req, res) => {
-  res.json({ emails: REPORT_EMAILS, configured: !!(EMAIL_USER && EMAIL_PASS) });
+  res.json({ emails: REPORT_EMAILS, configured: EMAIL_CONFIGURED });
 });
 
 // Recebe o PDF (gerado no navegador) e envia por e-mail como anexo
 app.post("/report", requireApiAuth, async (req, res) => {
-  if (!EMAIL_USER || !EMAIL_PASS) {
+  if (!EMAIL_CONFIGURED) {
     return res.status(500).send("Email is not configured on the server yet.");
   }
   const { pdfBase64, to, subject, filename } = req.body || {};
@@ -310,27 +334,36 @@ app.post("/report", requireApiAuth, async (req, res) => {
   if (!recipients.length) return res.status(400).send("Add at least one valid recipient email.");
   if (!pdfBase64)         return res.status(400).send("No report to send.");
 
+  const subj = subject || "Schedule report";
+  const fname = filename || "schedule-report.pdf";
+
   try {
-    const transporter = makeTransport();
-    await transporter.sendMail({
-      from: EMAIL_FROM || EMAIL_USER,
-      to: recipients.join(", "),
-      subject: subject || "Schedule report",
-      text: "Schedule report attached.",
-      attachments: [{
-        filename: filename || "schedule-report.pdf",
-        content: Buffer.from(pdfBase64, "base64"),
-        contentType: "application/pdf"
-      }]
-    });
+    if (BREVO_API_KEY && EMAIL_FROM) {
+      // Envio por HTTPS (recomendado no Render)
+      await sendViaBrevo({ from: EMAIL_FROM, to: recipients, subject: subj, pdfBase64, filename: fname });
+    } else {
+      // Alternativa SMTP (Gmail) — costuma ser bloqueada no Render
+      const transporter = makeTransport();
+      await transporter.sendMail({
+        from: EMAIL_FROM || EMAIL_USER,
+        to: recipients.join(", "),
+        subject: subj,
+        text: "Schedule report attached.",
+        attachments: [{ filename: fname, content: Buffer.from(pdfBase64, "base64"), contentType: "application/pdf" }]
+      });
+    }
     res.json({ success: true, sentTo: recipients });
   } catch (err) {
     console.error("Erro ao enviar e-mail:", err);
     let msg;
-    if (err.code === "EAUTH") {
+    if (err.brevoStatus === 401) {
+      msg = "Email service rejected the API key. Check BREVO_API_KEY.";
+    } else if (err.brevoStatus === 400) {
+      msg = "Email rejected: " + (err.message || "") + " (is the sender EMAIL_FROM verified in Brevo?)";
+    } else if (err.code === "EAUTH") {
       msg = "Login to the email account failed. Check EMAIL_USER and the Gmail App Password (EMAIL_PASS).";
     } else if (["ETIMEDOUT", "ESOCKET", "ECONNECTION", "EDNS"].includes(err.code) || /timeout|timed out/i.test(err.message || "")) {
-      msg = "Could not reach the email server (connection blocked or timed out). The host may block SMTP — a web email service may be needed.";
+      msg = "Could not reach the email server (connection blocked or timed out). The host may block SMTP — use a web email service (Brevo).";
     } else {
       msg = "Could not send the email: " + (err.message || "unknown error");
     }
