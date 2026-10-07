@@ -8,6 +8,13 @@ const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+// O Render não tem IPv6; força o Node a resolver nomes em IPv4 primeiro
+// (evita "ENETUNREACH ...:465" ao conectar no SMTP do Gmail)
+if (dns.setDefaultResultOrder) {
+  try { dns.setDefaultResultOrder('ipv4first'); } catch (e) {}
+}
 
 // ===================== //
 // E-MAIL / RELATÓRIO     //
@@ -24,14 +31,16 @@ const EMAIL_HOST = process.env.EMAIL_HOST || "";   // opcional: SMTP genérico (
 const EMAIL_PORT = process.env.EMAIL_PORT || "";
 
 function makeTransport() {
+  // Fail fast instead of hanging; force IPv4 (Render has no IPv6)
+  const timeouts = { connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 20000, family: 4 };
   if (EMAIL_HOST) {
     const port = Number(EMAIL_PORT) || 587;
     return nodemailer.createTransport({
       host: EMAIL_HOST, port, secure: port === 465,
-      auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+      auth: { user: EMAIL_USER, pass: EMAIL_PASS }, ...timeouts
     });
   }
-  return nodemailer.createTransport({ service: "gmail", auth: { user: EMAIL_USER, pass: EMAIL_PASS } });
+  return nodemailer.createTransport({ service: "gmail", auth: { user: EMAIL_USER, pass: EMAIL_PASS }, ...timeouts });
 }
 const REPORT_EMAILS = (process.env.REPORT_EMAILS || "")
   .split(",").map(s => s.trim()).filter(Boolean);
@@ -317,7 +326,15 @@ app.post("/report", requireApiAuth, async (req, res) => {
     res.json({ success: true, sentTo: recipients });
   } catch (err) {
     console.error("Erro ao enviar e-mail:", err);
-    res.status(500).send("Could not send the email: " + (err.message || "unknown error"));
+    let msg;
+    if (err.code === "EAUTH") {
+      msg = "Login to the email account failed. Check EMAIL_USER and the Gmail App Password (EMAIL_PASS).";
+    } else if (["ETIMEDOUT", "ESOCKET", "ECONNECTION", "EDNS"].includes(err.code) || /timeout|timed out/i.test(err.message || "")) {
+      msg = "Could not reach the email server (connection blocked or timed out). The host may block SMTP — a web email service may be needed.";
+    } else {
+      msg = "Could not send the email: " + (err.message || "unknown error");
+    }
+    res.status(500).send(msg);
   }
 });
 

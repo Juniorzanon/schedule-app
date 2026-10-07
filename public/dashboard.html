@@ -2081,17 +2081,28 @@ async function sendReport() {
     const pdfBase64 = uri.substring(uri.indexOf("base64,") + 7);
     const filename = "Floor plan report - " + reportDateLabel().replace(/\//g, "-") + ".pdf";
 
-    const res = await fetch("/report", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pdfBase64, to: recipients, subject: reportSubject(), filename })
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 35000);   // don't hang forever
+    let res;
+    try {
+      res = await fetch("/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pdfBase64, to: recipients, subject: reportSubject(), filename }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (res.status === 401) return handleAuthExpired();
     if (!res.ok) throw new Error(await res.text() || "Could not send the report.");
     setStatus("reportStatus", "reportStatusPill", "Report sent to " + recipients.join(", "), "success");
     setTimeout(closeReport, 1400);
   } catch (err) {
-    setStatus("reportStatus", "reportStatusPill", err.message || "Could not send the report.", "error");
+    const msg = err.name === "AbortError"
+      ? "Timed out — the email server took too long. Try again."
+      : (err.message || "Could not send the report.");
+    setStatus("reportStatus", "reportStatusPill", msg, "error");
   } finally {
     btn.disabled = false;
   }
