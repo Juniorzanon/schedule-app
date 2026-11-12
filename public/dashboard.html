@@ -532,8 +532,8 @@ table {
   table-layout: fixed;
 }
 
-.role-col { width: 14%; }
-.name-col { width: 27%; }
+.role-col { width: 16%; }
+.name-col { width: 25%; }
 .time-col { width: 10%; }
 .break-col { width: 12%; }
 .move-col { width: 15%; }
@@ -595,7 +595,7 @@ td:nth-child(6),
 
 .role-select {
   width: 100%;
-  min-width: 96px;
+  min-width: 112px;
   padding: 6px 6px;
   font-size: 12.5px;
   font-weight: 600;
@@ -1137,8 +1137,8 @@ body.ipad-open { overflow: hidden; }
     line-height: 1.12;
   }
 
-  .role-col { width: 14%; }
-  .name-col { width: 34%; }
+  .role-col { width: 17%; }
+  .name-col { width: 31%; }
   .time-col { width: 10%; }
   .break-col { width: 16%; }
 
@@ -1729,7 +1729,7 @@ function createCheckboxCell(checked = false) {
   return td;
 }
 
-const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule", "Beef", "Lobby", "Kitchen", "Front", "Dive", "Sick", "N/A", "Late", "N/S"];
+const ROLE_OPTIONS = ["", "Shift", "Admin", "Delivery", "Close", "Office", "Order", "Calibration", "Schedule", "Beef", "Lobby", "Kitchen", "Front", "Dive", "DFS Sign off", "Training", "Weekly counts", "Monthly counts", "Sick", "N/A", "Late", "N/S"];
 const ROLE_HIGHLIGHT = "Shift";       // row highlighted grey
 const ROLE_DELIVERY = "Delivery";     // row highlighted light blue
 const ADMIN_ROLES = [];               // (no roles are Admin-only anymore)
