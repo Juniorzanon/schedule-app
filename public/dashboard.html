@@ -2450,6 +2450,18 @@ async function logout() {
   window.location.href = "/login.html";
 }
 
+// ── Auto-logout after 5 minutes of inactivity ───────────────────────────────
+const IDLE_LOGOUT_MS = 5 * 60 * 1000;   // 5 minutes
+let idleTimer = null;
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(logout, IDLE_LOGOUT_MS);
+}
+["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click", "wheel"].forEach(ev =>
+  document.addEventListener(ev, resetIdleTimer, { passive: true })
+);
+resetIdleTimer();   // start counting on load
+
 // Se qualquer chamada de dados retornar 401 (sessão expirada), volta ao login
 function handleAuthExpired() {
   window.location.href = "/login.html";
